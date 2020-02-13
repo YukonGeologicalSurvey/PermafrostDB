@@ -116,6 +116,7 @@ library(plotKML)
 library(leafpop)
 library(raster)
 library(rgdal)
+library(shinycssloaders)
 
 # Get locations
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
@@ -146,7 +147,8 @@ ui <- function(request){fluidPage(
     navbarPage(title = "", id = "Navbar",
                
                tabPanel("Map", 
-                        leafletOutput("mymap", height='750'),
+                        leafletOutput("mymap", height='750') %>% 
+                          withSpinner(color="#0097A9"),
                         downloadButton("downloadLoc.csv", "Download locations CSV"),
                         downloadButton('downloadLoc.kml', "Download locations KML"),
                         downloadButton('downloadLoc.shp', "Download locations shapefile")
@@ -158,13 +160,15 @@ ui <- function(request){fluidPage(
                                                 choices=locs$name,
                                                 selected="", 
                                                 options = list(maxOptions=15000))),
-                          column(8, leafletOutput("locmap", height='300'))
+                          column(8, leafletOutput("locmap", height='300') %>% 
+                                   withSpinner(color="#0097A9"))
                         ),
                         # Setup tabs within 'Data'
                         tabsetPanel(type = 'tabs',
 
                                     tabPanel("Soil description",
-                                             uiOutput("soil")),
+                                             uiOutput("soil") %>% 
+                                               withSpinner(color="#0097A9")),
                                     tabPanel("Permafrost description",
                                              uiOutput("permafrost")),
                                     # tabPanel("Surface description",
@@ -245,33 +249,7 @@ server <- function(input, output, session) {
     }
   )
   
-  # # Version 1 to download shapefile
-  # output$downloadLoc.shp <- downloadHandler(
-  #   filename = paste0("GeotechLocations_", Sys.Date(), ".zip"),
-  #   content = function(file) {
-  #     # Create coords
-  #     xy <- locs[, c("long", "lat")]
-  #     # Create spatial object
-  #     shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
-  #     # Create temporary folder
-  #     temp_shp <- tempdir()
-  #     # Create shapefile
-  #     writeOGR(shp, temp_shp, 'GeotechLocations', "ESRI Shapefile", overwrite_layer=TRUE)
-  #     # zip shapefile files
-  #     zip_file <- file.path(temp_shp, "GeotechLocations.zip") # construct path to file
-  #     shp_files <- list.files(temp_shp, "GeotechLocations", full.names = TRUE) # character list of files in temp_shp
-  #     #shp_files2 <- list.files(temp_shp, "GeotechLocations")
-  #     #named <- paste0(shp_files2, ".zip")
-  #     #mapply(zip, zipfile= named, files = shp_files)
-  #     zip(zipfile= zip_file, files = shp_files)
-  #     # copy the zip file to the file argument
-  #     file.copy(zip_file, file)
-  #     # remove all the files created
-  #     file.remove(zip_file, shp_files)
-  #   }
-  # )
-  
-  ## Version 2 to download shapefile
+  ## Download shapefile
   output$downloadLoc.shp <- downloadHandler(
     filename = function() {
       paste0("GeotechLocations_", Sys.Date(), ".zip")
@@ -331,12 +309,12 @@ server <- function(input, output, session) {
   })
   
   ## Metadata
-  output$surface <- renderUI({
+  output$metadata <- renderUI({
     if(nrow(metadata_input())==0)
       return("No data available")
-    tableOutput("metadata")
+    tableOutput("metadata_")
   })
-  output$metadata <- renderTable({
+  output$metadata_ <- renderTable({
     metadata_input()
   })
 
