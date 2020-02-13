@@ -14,25 +14,25 @@ pft.dbconnect <- function(classPath, username, password) {
 }
 
 # Connect to database
-con <- pft.dbconnect(classPath= "C:/ojdbc6.jar", username="", password="")
+con <- pft.dbconnect(classPath= "C:/ojdbc6.jar", #"/srv/ojdbc6.jar", 
+                     username="", password="")
 
 #-------------------------------------------------------------------------------------
 #################### START UP #######################################################
 
 # Load packages
 library(shiny)
-library(shinythemes)
 library(dygraphs)
 library(leaflet)
 library(htmlTable)
 library(DT)
 library(dplyr)
-library(shiny.router)
-library(shinydashboard)
 library(DBI)
 library(leafpop)
 library(plotKML)
 library(rgdal)
+library(shinycssloaders)
+
 
 enableBookmarking("url")
 
@@ -41,7 +41,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
                                " EXTRACT(year FROM END_DATE),",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM PFT_SUMMARY_LOC",
+                               " FROM YGSIDS.PFT_SUMMARY_LOC",
                                " ORDER BY NAME DESC"
                                ))
 
@@ -129,7 +129,7 @@ pft.query <- function(con, location) { #aggr
     # } else {
         obs <- dbGetQuery(con, paste0("SELECT TEMPDATE, MONTH, YEAR, DEPTH, ROUND(AVG(TEMP), 2) AS DAILYTEMP, ",
                                       "WHO_ID, METHOD_ID ",
-                                      "FROM PFT_SUMMARY ",
+                                      "FROM YGSIDS.PFT_SUMMARY ",
                                       "WHERE NAME = '", location, "' ",
                                       "GROUP BY TEMPDATE, NAME, DEPTH, MONTH, YEAR, WHO_ID, METHOD_ID ",
                                       "ORDER BY TEMPDATE, DEPTH DESC"))
@@ -146,7 +146,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
     
     if (aggr=="none") {
         obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
-                                      "FROM PFT_SUMMARY ",
+                                      "FROM YGSIDS.PFT_SUMMARY ",
                                       "WHERE NAME = '", location, "' ",
                                       "AND DEPTH >= ", depth_max, " AND DEPTH <=", depth_min, 
                                       " AND TEMPTIME BETWEEN '", date_s ,"' AND '", date_e, "'",
@@ -331,7 +331,7 @@ current.loc <- function(n){
 ## Metadata
 # Location
 location.met <- function(loc) {
-    tab <- dbGetQuery(con, paste0("SELECT * FROM PFT_LOCATIONS ",
+    tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_LOCATIONS ",
                                   "WHERE NAME = '", loc, "'"))
     
     tab <- reshape(tab, times=c("ID", "Name", "Latitude", "longitude", "Elevation", "Location accuracy",
@@ -347,7 +347,7 @@ location.met <- function(loc) {
 
 # Who
 who.met <- function(who) {
-    tab <- dbGetQuery(con, paste0("SELECT * FROM PFT_WHO ",
+    tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_WHO ",
                                   "WHERE ID IN ",
                                   "('", who, "')"))
     
@@ -362,7 +362,7 @@ who.met <- function(who) {
 
 # Method
 method.met <- function(method) {
-    tab <- dbGetQuery(con, paste0("SELECT * FROM PFT_METHOD ",
+    tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_METHOD ",
                                   "WHERE ID IN ",
                                   "('", method, "')"))
     
@@ -416,7 +416,7 @@ ui <- function(request){fluidPage(
     navbarPage(title = "", id = "Navbar",
                 
                tabPanel("Map", 
-                        leafletOutput("mymap", height='750'),
+                        leafletOutput("mymap", height='750') %>% withSpinner(color="#0097A9"),
                         downloadButton("downloadLoc.csv", "Download locations CSV"),
                         downloadButton('downloadLoc.kml', "Download locations KML"),
                         downloadButton('downloadLoc.shp', "Download locations shapefile")),
@@ -445,7 +445,8 @@ ui <- function(request){fluidPage(
                         
                                     tabPanel("Time series", 
                                              #uiOutput("dygraph"),
-                                             dygraphOutput("dygraph", width = "95%"),
+                                             dygraphOutput("dygraph", width = "95%") %>% 
+                                               withSpinner(color="#0097A9"),
                                              br(),
                                              textOutput("dygraph_txt"),
                                               tags$head(tags$style("#dygraph_txt{color:grey;
@@ -457,21 +458,25 @@ ui <- function(request){fluidPage(
                                              downloadButton("downloadData", "Download"),
                                              DT::dataTableOutput("table", 
                                                                  width = "95%",
-                                                                 height = "100%")),
+                                                                 height = "100%") %>% 
+                                               withSpinner(color="#0097A9")),
                                     tabPanel("Trumpet curves", plotOutput("TrumpetCurves",
                                                                           width = "850px",
-                                                                          height = "600px"),
+                                                                          height = "600px") %>% 
+                                              withSpinner(color="#0097A9"),
                                               br(),
                                               textOutput("trumpetCurves_txt"),
                                                 tags$head(tags$style("#trumpetCurves_txt{color:grey;
                                                                                          font-size: 12px}"))
                                              ),       
                                               
-                                    tabPanel("Map", leafletOutput("locmap", height='500')),
+                                    tabPanel("Map", leafletOutput("locmap", height='500') %>% 
+                                               withSpinner(color="#0097A9")),
                                     tabPanel("Metadata", 
                                              fluidRow(
                                                  column(4, tableOutput("location_met")),
-                                                 column(4, tableOutput("who_met")),
+                                                 column(4, tableOutput("who_met") %>% 
+                                                          withSpinner(color="#0097A9")),
                                                  column(4, tableOutput("method_met"))
                                                       )
                                              )
