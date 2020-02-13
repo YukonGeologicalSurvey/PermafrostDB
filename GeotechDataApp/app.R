@@ -14,7 +14,7 @@ pft.dbconnect <- function(classPath, username, password) {
 }
 
 # Connect to database
-con <- pft.dbconnect(classPath="C:/ojdbc6.jar", username, password)
+con <- pft.dbconnect(classPath="C:/ojdbc6.jar", username="", password="")
 
 enableBookmarking("url")
 #-------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ f.soil_desc <- function(loc) {
   site_id <- loc
   tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, BOUNDARY, SOIL_DESC, ",
                                 "CLASS, USC_CODE, COMMENTS ",
-                                "FROM PF_SOIL_DESC ",
+                                "FROM YGSIDS.PF_SOIL_DESC ",
                                 "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
@@ -71,7 +71,7 @@ f.pf_desc <- function(loc) {
   site_id <- loc
   tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, TEMPERATURE, SURFACE_THAW, ",
                                 "PERMAFROST_DESC, ICE_CODE, CLASS, PERCENT_ICE, COMMENTS ",
-                                "FROM PF_PERMAFROST_DESC ",
+                                "FROM YGSIDS.PF_PERMAFROST_DESC ",
                                 "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
@@ -85,7 +85,7 @@ f.surface_desc <- function(loc) {
                                 "ORGANIC_THICKNESS, TOPOGRAPHY, DRAINAGE, SURFICIAL_GEOLOGY, ",
                                 "TERRAIN, SNOW_DEPTH, SNOW_DENSITY, SNOW_THERMAL_CONDUCT, ",
                                 "SLOPE_ANGLE, SLOPE_ASPECT, DISTURBANCE, ECOREGION ",
-                                "FROM PF_SURFACE_DESC ",
+                                "FROM YGSIDS.PF_SURFACE_DESC ",
                                 "WHERE SITE_ID = '", site_id, "'"))
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
@@ -98,7 +98,7 @@ f.meta <- function(loc) {
                                 "CLIENT, CONTRACTOR, EQUIPMENT, CORE_DIAMETER ",
                                 "FLUSH, PLUNGE, AZIMUTH, PROJECT_ENGINEER, HOLE_TYPE ",
                                 "ROCK_DEPTH, COORD_ACQ, GW_TABLE, COMMENTS ",
-                                "FROM PF_LOCATIONS ",
+                                "FROM YGSIDS.PF_LOCATIONS ",
                                 "WHERE SITE_ID = '", site_id, "'"))
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
@@ -111,7 +111,6 @@ f.meta <- function(loc) {
 library(shiny)
 library(leaflet)
 library(htmlTable)
-library(mapview)
 library(DBI)
 library(plotKML)
 library(leafpop)
@@ -121,7 +120,7 @@ library(rgdal)
 # Get locations
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
                    END_DATE, LATITUDE, LONGITUDE, PROJECT_NUMBER
-                   FROM PF_LOCATIONS ORDER BY SITE_ID")
+                   FROM YGSIDS.PF_LOCATIONS ORDER BY SITE_ID")
 names(locs) <- c("name", "elevation", "hole_depth", "start_date", "end_date",
                  "lat", "long", "project_number") 
 
@@ -347,7 +346,7 @@ server <- function(input, output, session) {
     site_id <- input$loc
     tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, CORE_DIA, ",
                                   "TYPE, USC_CODE, COMMENTS ",
-                                  "FROM PF_SAMPLE ",
+                                  "FROM YGSIDS.PF_SAMPLE ",
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY SAMPLE_NUMBER"))
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
@@ -359,7 +358,7 @@ server <- function(input, output, session) {
     tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, THAW_WEAKEN, ",
                                   "THAW_STRAIN, UNFROZEN_WATER, CREEP, ADFREEZE, THERMAL_COND, ",
                                   "LATENT_HEAT_FUSION, COMMENTS ",
-                                  "FROM PF_PERMAFROST_TESTING ",
+                                  "FROM YGSIDS.PF_PERMAFROST_TESTING ",
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY SAMPLE_NUMBER"))
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
@@ -372,7 +371,7 @@ server <- function(input, output, session) {
                                   "LPT_N, GS, MOISTURE, LL, PL, PI, GRAVEL, SAND, FINES, SILT, ",
                                   "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, TEST_COM, ",
                                   "TOP_DEPTH, COMMENTS ",
-                                  "FROM PF_GEOTECH_TESTING ",
+                                  "FROM YGSIDS.PF_GEOTECH_TESTING ",
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY SAMPLE_NUMBER"))
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
@@ -383,7 +382,7 @@ server <- function(input, output, session) {
     site_id <- input$loc
     tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, HYDROCARBON, ",
                                   "LEL, PID, ELECTRICAL_CONDUCTIVITY, CHLORIDE, METHANE, COMMENTS ",
-                                  "FROM PF_ENVIRONMENTAL ",
+                                  "FROM YGSIDS.PF_ENVIRONMENTAL ",
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY SAMPLE_NUMBER"))
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
