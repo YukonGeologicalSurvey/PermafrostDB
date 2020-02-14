@@ -14,7 +14,7 @@ pft.dbconnect <- function(classPath, username, password) {
 }
 
 # Connect to database
-con <- pft.dbconnect(classPath= "C:/ojdbc6.jar", #"/srv/ojdbc6.jar", 
+con <- pft.dbconnect(classPath= "C:/ojdbc6.jar",
                      username="", password="")
 
 #-------------------------------------------------------------------------------------
@@ -47,7 +47,6 @@ locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
 
 names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
                  "lat", "long", "permafrost")
-#tabhs <- f.tabhs(locs)
 
 #-------------------------------------------------------------------------------------
 #################### FUNCTIONS #######################################################
@@ -55,22 +54,20 @@ names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
 f.link <- function(locs) {
     links <- c()
     for (i in locs$name) {
-        #locsl <- locs[locs$name==i,]
-        #link <- c(paste0("'<a href = \"/?a=b", "&loc=", i, "\"> See site data here </a>'"))
         link <- c(paste0("'<a href = \"/?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
                          "&loc=%22", i, "%22&loc-selectized=%22%22",
                          "&Navbar=%22Temperature%22\"> See site data here </a>'"))
         links <- c(links, link)
     }
     locsl <- cbind(locs, links)
-    
+  
     return(locsl)
 }
 ########## pft.map: Leaflet map ##########
 pft.map <- function(loc, zoom=FALSE) {
     
     # Set up icon colours
-    pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))#unique(locs$permafrost))
+    pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
     # Create map
      if (zoom==TRUE){
          loc <- as.data.frame(loc)
@@ -84,7 +81,7 @@ pft.map <- function(loc, zoom=FALSE) {
     else if (zoom==FALSE){
         leaflet(loc) %>%
             addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-            addCircleMarkers(lng=loc$long, lat=loc$lat, #popup=tabhs,
+            addCircleMarkers(lng=loc$long, lat=loc$lat,
                              popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
                              color = ~pal(permafrost), opacity=1) %>%
             leaflet::addLegend("topright", pal = pal, values = ~permafrost)
@@ -105,10 +102,6 @@ f.tabhs <- function(locs) {
                      direction="long", sep="")
         rownames(x) <- x$time
         x <- x[, c("time", "value")]
-        
-        # Add hyperlink row
-        # link <- c("link", paste0("'<a href = \"/?a=b", "&loc=", i, "\"> See site data here </a>'"))
-        #x <- rbind(x, link)
         
         tabh <- htmlTable(x, rnames = FALSE, caption = i, header=c("", ""), align=paste(rep('l,c',ncol(x)),collapse=''))
         tabhs <- c(tabhs, tabh)
@@ -186,9 +179,6 @@ pft.plot <- function(obs) {
     require(xts)
     
     date <- data.frame(date=unique(obs$date))
-    # if (length(date$date) <= 11) {
-    #   return(paste("Not enough data points to form time series"))
-    # }
     
     depths <- unique(obs$depth)
     series <- NULL
@@ -211,9 +201,7 @@ pft.plot <- function(obs) {
     snamesLen <- length(snames)
     
     #plot time series
-    graph <- dygraph(qxts, 
-                     #main=paste(location, collapse=", "),
-                     ylab = "Temperature")
+    graph <- dygraph(qxts, ylab = "Temperature")
     
     # iterate to create series labels
     for (seriesNum in 1:snamesLen)
@@ -274,7 +262,6 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
         if (mn < 350) {
             anno <- NULL
             anno <- paste0("Incomplete dataset:\nmin: ", mn, "\n", "max: ", mx)
-            # anno <- strsplit(anno, "\n")[[1]]
         } else {anno <- NA}
         
         annot <- c(annot, anno)
@@ -307,11 +294,10 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
         geom_point(aes(x=depth, y=mean), color="grey20", size=2) + 
         
         geom_text(data=annots, aes(
-            #x=-Inf, y=Inf, hjust=0, vjust=1,
             x=max(obs$depth) + .75*min(obs$depth), y=mean(obs$max) + 2,
             hjust=0.4, vjust=0.7,# Add incomplete dataset text
-                                   label=annot, col="#F2A900"),
-                  show.legend=FALSE) +
+            label=annot, col="#F2A900"),
+            show.legend=FALSE) +
         facet_wrap(~year) 
     
     print(plt)
@@ -388,15 +374,6 @@ method.met <- function(method) {
 # Define UI for application
 ui <- function(request){fluidPage( 
     
-    #theme = shinytheme("flatly"),
-    #theme = "bootstrap.css",
-    #includeCSS("test.css"),
-    # Set colour of sliders
-    #tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar,
-    #                .js-irs-0 .irs-to,.js-irs-0 .irs-from {background: #244C5A}")),
-    #tags$style(HTML(".js-irs-1 .irs-single, .js-irs-1 .irs-bar-edge, .js-irs-1 .irs-bar,
-    #                .js-irs-0 .irs-to,.js-irs-0 .irs-from {background: #244C5A}")),
-    
     # Application title
     titlePanel(title = span("Yukon Ground Temperature Data", 
                             style = "color: Black; font-size: 28px")
@@ -439,12 +416,8 @@ ui <- function(request){fluidPage(
                         
                         # Setup tabs within 'Temperature'
                         tabsetPanel(type = 'tabs',
-                                    # Trying to set colours of tabsetpanel
-                                    #tags$style(type='text/css', '#myoutput1 {background-color: rgba(255,255,0,0.40); color: green;}'), 
-                                    #tags$style(type='text/css', '#myoutput2 {background-color: rgba(0,0,255,0.10); color: blue;}'), 
-                        
+                                      
                                     tabPanel("Time series", 
-                                             #uiOutput("dygraph"),
                                              dygraphOutput("dygraph", width = "95%") %>% 
                                                withSpinner(color="#0097A9"),
                                              br(),
@@ -501,12 +474,12 @@ server <- shinyServer(function(input, output, session) {
         updateQueryString(url)
     })
 
-  
-
+    
+    
     ###=============================================================================
     ### Selection
     ###=============================================================================
-
+    
     # Years selection
     output$secondSelection <- renderUI({
         # Get current location obs table
@@ -553,9 +526,6 @@ server <- shinyServer(function(input, output, session) {
                                        depth_min = input$depths[2], date_s = paste0(input$years[1], "-01-01"),
                                        date_e = paste0(input$years[2], "-12-31"))})
     
-    # Time series plot
-    #timeseries <- reactive({pft.plot(currentObs())})
-    
     # Create html table from current locations table
     currentLocTabh <- reactive({f.tabhs(locs = currentLoc())}) # Not currently in use
     
@@ -569,71 +539,57 @@ server <- shinyServer(function(input, output, session) {
     })
     
     # Single location MAP
-     output$locmap <- renderLeaflet({
+    output$locmap <- renderLeaflet({
         pft.map(loc=currentLoc(), zoom=TRUE)
     })
-     
-    ### Locations download
-     # CSV download
-     output$downloadLoc.csv <- downloadHandler(
-       filename = paste0("TempLocations_", Sys.Date(), ".csv"),
-       content = function(file) {
-         write.csv(locs, file)
-       }
-     )
-     # KML download
-     output$downloadLoc.kml <- downloadHandler(
-       filename = paste0("TempLocations_", Sys.Date(), ".kml"),
-       content = function(file) {
-         xy <- locs[, c("long", "lat")]
-         shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
-         # aesthetics
-         pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
-         kml(shp, folder.name = "Temperature locations", file, 
-             shape="http://maps.google.com/mapfiles/kml/pal2/icon18.png",
-             #IconColor=hex2kml('#0097A9'), fill=hex2kml('#0097A9')#~pal(permafrost)
-             )
-       }
-     )
-     # Shapefile download
-     output$downloadLoc.shp <- downloadHandler(
-       filename = function() {
-         paste0("TempLocations_", Sys.Date(), ".zip")
-       },
-       content = function(file) {
-         # Create coords
-         xy <- locs[, c("long", "lat")]
-         # Create spatial object
-         shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
-         # Create temporary folder
-         tempdir <- tempdir()
-         setwd(tempdir())
-         # Create shapefile
-         writeOGR(shp, tempdir, 'TempLocations', "ESRI Shapefile", overwrite_layer=TRUE)
-         # zip shapefile files
-         zip_file <- file.path(tempdir, "TempLocations.zip") # construct path to file
-         shp_files <- list.files(tempdir, "TempLocations", full.names = FALSE) # character list of files in temp_shp
-         zip(zipfile= file, files = shp_files, shape=)
-       }
-     )
     
-    ### Time series
-    #  output$dygraph <- renderUI({
-    #    plot <- timeseries()
-    #    if(class(plot)=='character')
-    #      return("Not enough data points for time series")
-    #    dygraphOutput("dygraph2")
-    # })
-    #  output$dygraph2 <- renderDygraph({
-    #    timeseries()
-    #  })
-     
-     output$dygraph <- renderDygraph({
-       obs <- currentObs()
-       pft.plot(obs)
-     })
+    ### Locations download
+    # CSV download
+    output$downloadLoc.csv <- downloadHandler(
+      filename = paste0("TempLocations_", Sys.Date(), ".csv"),
+      content = function(file) {
+        write.csv(locs, file)
+      }
+    )
+    # KML download
+    output$downloadLoc.kml <- downloadHandler(
+      filename = paste0("TempLocations_", Sys.Date(), ".kml"),
+      content = function(file) {
+        xy <- locs[, c("long", "lat")]
+        shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
+        # aesthetics
+        pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
+        plotKML(shp, folder.name = "Temperature locations", file, 
+                points.names = shp$name)
+      }
+    )
+    # Shapefile download
+    output$downloadLoc.shp <- downloadHandler(
+      filename = function() {
+        paste0("TempLocations_", Sys.Date(), ".zip")
+      },
+      content = function(file) {
+        # Create coords
+        xy <- locs[, c("long", "lat")]
+        # Create spatial object
+        shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
+        # Create temporary folder
+        tempdir <- tempdir()
+        setwd(tempdir())
+        # Create shapefile
+        writeOGR(shp, tempdir, 'TempLocations', "ESRI Shapefile", overwrite_layer=TRUE)
+        # zip shapefile files
+        zip_file <- file.path(tempdir, "TempLocations.zip") # construct path to file
+        shp_files <- list.files(tempdir, "TempLocations", full.names = FALSE) # character list of files in temp_shp
+        zip(zipfile= file, files = shp_files, shape=)
+      }
+    )
+    
+    output$dygraph <- renderDygraph({
+      obs <- currentObs()
+      pft.plot(obs)
+    })
     # Time series description
-     
     output$dygraph_txt <- renderText({
       paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
              "where every line represents a different depth.", input$n)
@@ -641,9 +597,9 @@ server <- shinyServer(function(input, output, session) {
     
     # Summary locations table to go below time series
     output$locsmeta <- renderUI({
-        HTML(
-            f.tabhs(locs = currentLoc()) 
-        )
+      HTML(
+        f.tabhs(locs = currentLoc()) 
+      )
     })
     
     
@@ -653,17 +609,17 @@ server <- shinyServer(function(input, output, session) {
     })
     # Data download
     output$downloadData <- downloadHandler(
-        filename = paste0(currentLoc(), "-", Sys.Date(), ".csv"),
-        content = function(file) {
-            obs <- reformatTable()
-            colnames(obs) <- gsub(pattern="temp.", replacement="", x=colnames(obs))
-            write.csv(obs, file, row.names=FALSE)
-        })
-
+      filename = paste0(currentLoc(), "-", Sys.Date(), ".csv"),
+      content = function(file) {
+        obs <- reformatTable()
+        colnames(obs) <- gsub(pattern="temp.", replacement="", x=colnames(obs))
+        write.csv(obs, file, row.names=FALSE)
+      })
+    
     ### Trumpet curves
     output$TrumpetCurves <- renderPlot({
-        pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
-                              paste0(input$years[2], "-12-31"))
+      pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
+                            paste0(input$years[2], "-12-31"))
     })
     # Trumpet curves description
     output$trumpetCurves_txt <- renderText({
@@ -675,16 +631,16 @@ server <- shinyServer(function(input, output, session) {
     ### Metadata
     # Location metadata
     output$location_met <- renderTable({
-        location.met(input$loc)
-        },
-        colnames = FALSE, caption = "Location",
-        caption.placement = getOption("xtable.caption.placement", "top"),
+      location.met(input$loc)
+    },
+    colnames = FALSE, caption = "Location",
+    caption.placement = getOption("xtable.caption.placement", "top"),
     )
     
     # Who metadata
     output$who_met <- renderTable({
-        who_id <- unique(mainObs()$who_id)
-        who.met(who_id)
+      who_id <- unique(mainObs()$who_id)
+      who.met(who_id)
     },
     colnames = FALSE, caption = "Who", 
     caption.placement = getOption("xtable.caption.placement", "top"),
@@ -692,8 +648,8 @@ server <- shinyServer(function(input, output, session) {
     
     # Method metadata
     output$method_met <- renderTable({
-        method_id <- unique(mainObs()$method_id)
-        method.met(method_id)
+      method_id <- unique(mainObs()$method_id)
+      method.met(method_id)
     },
     colnames = FALSE, caption = "Method", 
     caption.placement = getOption("xtable.caption.placement", "top"),
@@ -705,5 +661,8 @@ shinyApp(ui = ui, server = server, enableBookmarking = "url")
 
 
 #-------------------------------------------------------------------------------------
+
+
+
 
 
