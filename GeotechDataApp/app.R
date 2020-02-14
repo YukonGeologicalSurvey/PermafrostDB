@@ -23,8 +23,6 @@ enableBookmarking("url")
 f.link <- function(locs) {
   links <- c()
   for (i in locs$name) {
-    #locsl <- locs[locs$name==i,]
-    #link <- c(paste0("'<a href = \"/?a=b", "&loc=", i, "\"> See site data here </a>'"))
     link <- c(paste0("'<a href = \"/?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
                      "&Navbar=%22Data%22\"> See site data here </a>'"))
     links <- c(links, link)
@@ -40,11 +38,9 @@ pft.map <- function(loc) {
   # Create map
   leaflet(loc) %>%
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-    #addTiles() %>%  # Add default OpenStreetMap map tiles
     addCircleMarkers(lng=loc$long, lat=loc$lat, 
                      popup=popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
                      color = "#0097A9", opacity=1)
-  #leaflet::addLegend("topright", pal = pal, values = ~permafrost)
 }
 
 ########## current.loc: Reactive function for locs subset ###########
@@ -132,10 +128,10 @@ map <- pft.map(locs)
 ###################### UI ##################################
 # Define UI for application that draws a histogram
 ui <- function(request){fluidPage(
-
-    # Application title
-    titlePanel("Yukon Geotechnical Data"),# Set colour of Navigation bar
-    tags$style(HTML(" 
+  
+  # Application title
+  titlePanel("Yukon Geotechnical Data"),# Set colour of Navigation bar
+  tags$style(HTML(" 
         .navbar { background-color: #F2A900;}
         .navbar-default .navbar-nav > li > a {color:white;}
         .navbar-default .navbar-nav > .active > a,
@@ -143,57 +139,57 @@ ui <- function(request){fluidPage(
         .navbar-default .navbar-nav > .active > a:hover {color: white;background-color: #d99700;}
         .navbar-default .navbar-nav > li > a:hover {color: white;background-color:#d99700;}
                   ")),
-    
-    navbarPage(title = "", id = "Navbar",
-               
-               tabPanel("Map", 
-                        leafletOutput("mymap", height='750') %>% 
-                          withSpinner(color="#0097A9"),
-                        downloadButton("downloadLoc.csv", "Download locations CSV"),
-                        downloadButton('downloadLoc.kml', "Download locations KML"),
-                        downloadButton('downloadLoc.shp', "Download locations shapefile")
-                        ),
-               tabPanel("Data",
-                        # Locations panel
-                        fluidRow(
-                          column(4, selectizeInput("loc", "Site:",
-                                                choices=locs$name,
-                                                selected="", 
-                                                options = list(maxOptions=15000))),
-                          column(8, leafletOutput("locmap", height='300') %>% 
-                                   withSpinner(color="#0097A9"))
-                        ),
-                        # Setup tabs within 'Data'
-                        tabsetPanel(type = 'tabs',
-
-                                    tabPanel("Soil description",
-                                             uiOutput("soil") %>% 
-                                               withSpinner(color="#0097A9")),
-                                    tabPanel("Permafrost description",
-                                             uiOutput("permafrost")),
-                                    # tabPanel("Surface description",
-                                    #          uiOutput("surface")),
-                                    tabPanel("Samples",
-                                             fluidPage(
-                                               fluidRow(
-                                                 column(12, tableOutput("sample"))
-                                               ),
-                                               fluidRow(column(12, tableOutput("permafrost_testing"))
-                                                        ),
-                                               fluidRow(column(12, tableOutput("geotech_testing"))
-                                                        ),
-                                               fluidRow(column(12, tableOutput("enviro_testing")))
-                                             )),
-                                    tabPanel("Metadata",
-                                             uiOutput("metadata"))#,
-                                    # tabPanel("Install",
-                                    #          fluidRow(
-                                    #            column(6, tableOutput("install_desc")),
-                                    #            column(6, tableOutput("backfill"))
-                                    #          )
-                                    # )
-                        ))
-    )
+  
+  navbarPage(title = "", id = "Navbar",
+             
+             tabPanel("Map", 
+                      leafletOutput("mymap", height='750') %>% 
+                        withSpinner(color="#0097A9"),
+                      downloadButton("downloadLoc.csv", "Download locations CSV"),
+                      downloadButton('downloadLoc.kml', "Download locations KML"),
+                      downloadButton('downloadLoc.shp', "Download locations shapefile")
+             ),
+             tabPanel("Data",
+                      # Locations panel
+                      fluidRow(
+                        column(4, selectizeInput("loc", "Site:",
+                                                 choices=locs$name,
+                                                 selected="", 
+                                                 options = list(maxOptions=15000))),
+                        column(8, leafletOutput("locmap", height='300') %>% 
+                                 withSpinner(color="#0097A9"))
+                      ),
+                      # Setup tabs within 'Data'
+                      tabsetPanel(type = 'tabs',
+                                  
+                                  tabPanel("Soil description",
+                                           uiOutput("soil") %>% 
+                                             withSpinner(color="#0097A9")),
+                                  tabPanel("Permafrost description",
+                                           uiOutput("permafrost")),
+                                  # tabPanel("Surface description",
+                                  #          uiOutput("surface")),
+                                  tabPanel("Samples",
+                                           fluidPage(
+                                             fluidRow(
+                                               column(12, tableOutput("sample"))
+                                             ),
+                                             fluidRow(column(12, tableOutput("permafrost_testing"))
+                                             ),
+                                             fluidRow(column(12, tableOutput("geotech_testing"))
+                                             ),
+                                             fluidRow(column(12, tableOutput("enviro_testing")))
+                                           )),
+                                  tabPanel("Metadata",
+                                           uiOutput("metadata"))#,
+                                  # tabPanel("Install",
+                                  #          fluidRow(
+                                  #            column(6, tableOutput("install_desc")),
+                                  #            column(6, tableOutput("backfill"))
+                                  #          )
+                                  # )
+                      ))
+  )
 )
 }
 
@@ -245,7 +241,8 @@ server <- function(input, output, session) {
     content = function(file) {
       xy <- locs[, c("long", "lat")]
       shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
-      kml(shp, folder.name = "Geotech locations", file)
+      plotKML(shp, folder.name = "Geotech locations", file, 
+              points.names = shp$SITE_ID)
     }
   )
   
@@ -271,7 +268,7 @@ server <- function(input, output, session) {
     }
   )
   
-    
+  
   ## Single location map
   output$locmap <- renderLeaflet({
     cloc <- currentLoc()
@@ -281,7 +278,7 @@ server <- function(input, output, session) {
   ## Soil description
   output$soil <- renderUI({
     if(is.null(soil_desc_input()))
-       return("No data available")
+      return("No data available")
     tableOutput("soil_desc")
   })
   output$soil_desc <- renderTable({
@@ -297,7 +294,7 @@ server <- function(input, output, session) {
   output$permafrost_desc <- renderTable({
     permafrost_desc_input()
   })
-
+  
   ## Surface description
   output$surface <- renderUI({
     if(nrow(surface_desc_input())==0)
@@ -317,7 +314,7 @@ server <- function(input, output, session) {
   output$metadata_ <- renderTable({
     metadata_input()
   })
-
+  
   ## Samples
   # Sample
   output$sample <- renderTable({
@@ -365,31 +362,12 @@ server <- function(input, output, session) {
                                   "ORDER BY SAMPLE_NUMBER"))
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   }, caption = "Environmental", caption.placement = getOption("xtable.caption.placement", "top"),)
-
+  
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
 #-------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
