@@ -33,6 +33,10 @@ library(plotKML)
 library(rgdal)
 library(shinycssloaders)
 
+library(htmlwidgets)
+library(webshot)
+#webshot::install_phantomjs()
+
 
 enableBookmarking("url")
 
@@ -90,24 +94,6 @@ pft.map <- function(loc, zoom=FALSE) {
 }
 
 
-########## f.tabhs: Create location html tables ###########
-f.tabhs <- function(locs) {
-  tabhs <- NULL
-  for (i in locs$name) {
-    x <- locs[locs$name==i,]
-    x <- reshape(x, times=c("Start year", "End year", "Min depth", "Max depth", "Latitude", "longitude", "Permafrost"),
-                 ids=NULL,
-                 varying = c("start_year", "end_year", "min_depth", "max_depth", "lat", "long", "permafrost"),
-                 v.names= "value",
-                 direction="long", sep="")
-    rownames(x) <- x$time
-    x <- x[, c("time", "value")]
-    
-    tabh <- htmlTable(x, rnames = FALSE, caption = i, header=c("", ""), align=paste(rep('l,c',ncol(x)),collapse=''))
-    tabhs <- c(tabhs, tabh)
-  }
-  return(tabhs)
-}
 ########## pft.query and pft.subset: Reactive table and dygraph query and subset #################################
 
 ## Query daily average data from PFT_SUMMARY in database 
@@ -420,12 +406,11 @@ ui <- function(request){fluidPage(
                                   tabPanel("Time series", 
                                            dygraphOutput("dygraph", width = "95%") %>% 
                                              withSpinner(color="#0097A9"),
-                                           br(),
                                            textOutput("dygraph_txt"),
                                            tags$head(tags$style("#dygraph_txt{color:grey;
                                                                                  font-size: 12px}")),
                                            br(),
-                                           htmlOutput("locsmeta")
+                                           downloadButton("downloadPlot", "Download Plot")
                                   ),
                                   tabPanel("Table", 
                                            downloadButton("downloadData", "Download"),
@@ -526,8 +511,8 @@ server <- shinyServer(function(input, output, session) {
                                      depth_min = input$depths[2], date_s = paste0(input$years[1], "-01-01"),
                                      date_e = paste0(input$years[2], "-12-31"))})
   
-  # Create html table from current locations table
-  currentLocTabh <- reactive({f.tabhs(locs = currentLoc())}) # Not currently in use
+  # Plot dygraph with currentObs
+  dyplot <- reactive({pft.plot(currentObs())})
   
   # Re-format currentObs for downloadData and table
   reformatTable <- reactive({pft.tformat(currentObs())})
@@ -586,22 +571,21 @@ server <- shinyServer(function(input, output, session) {
   )
   
   output$dygraph <- renderDygraph({
-    obs <- currentObs()
-    pft.plot(obs)
+    dyplot()
   })
+  output$downloadPlot <- downloadHandler(
+    filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
+    content = function(file) {
+      saveWidget(dyplot(), "temp.html", selfcontained = FALSE)
+      webshot("temp.html", file = file)
+    },
+    contentType = 'image/png'
+  )
   # Time series description
   output$dygraph_txt <- renderText({
     paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
            "where every line represents a different depth.", input$n)
   })
-  
-  # Summary locations table to go below time series
-  output$locsmeta <- renderUI({
-    HTML(
-      f.tabhs(locs = currentLoc()) 
-    )
-  })
-  
   
   ### Table
   output$table <- renderDataTable({
@@ -661,8 +645,3 @@ shinyApp(ui = ui, server = server, enableBookmarking = "url")
 
 
 #-------------------------------------------------------------------------------------
-
-
-
-
-
