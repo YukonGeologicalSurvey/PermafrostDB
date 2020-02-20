@@ -380,6 +380,7 @@ ui <- function(request){fluidPage(
              
              tabPanel("Map", 
                       leafletOutput("mymap", height='750') %>% withSpinner(color="#0097A9"),
+                      br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
                       downloadButton('downloadLoc.kml', "Download locations KML"),
                       downloadButton('downloadLoc.shp', "Download locations shapefile")),
@@ -404,13 +405,15 @@ ui <- function(request){fluidPage(
                       tabsetPanel(type = 'tabs',
                                   
                                   tabPanel("Time series", 
+                                           br(),
+                                           downloadButton("downloadPlot", "Download plot"),
+                                           br(),
                                            dygraphOutput("dygraph", width = "95%") %>% 
                                              withSpinner(color="#0097A9"),
+                                           br(),
                                            textOutput("dygraph_txt"),
                                            tags$head(tags$style("#dygraph_txt{color:grey;
-                                                                                 font-size: 12px}")),
-                                           br(),
-                                           downloadButton("downloadPlot", "Download Plot")
+                                                                                 font-size: 12px}"))
                                   ),
                                   tabPanel("Table", 
                                            downloadButton("downloadData", "Download"),
@@ -418,9 +421,12 @@ ui <- function(request){fluidPage(
                                                                width = "95%",
                                                                height = "100%") %>% 
                                              withSpinner(color="#0097A9")),
-                                  tabPanel("Trumpet curves", plotOutput("TrumpetCurves",
-                                                                        width = "850px",
-                                                                        height = "600px") %>% 
+                                  tabPanel("Trumpet curves", 
+                                           br(),
+                                           downloadButton("downloadTrumpet", "Download plot"),
+                                           plotOutput("TrumpetCurves",
+                                                      width = "850px",
+                                                      height = "600px") %>% 
                                              withSpinner(color="#0097A9"),
                                            br(),
                                            textOutput("trumpetCurves_txt"),
@@ -570,9 +576,11 @@ server <- shinyServer(function(input, output, session) {
     }
   )
   
+  ### Time series
   output$dygraph <- renderDygraph({
     dyplot()
   })
+  # Time series download
   output$downloadPlot <- downloadHandler(
     filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
     content = function(file) {
@@ -611,6 +619,16 @@ server <- shinyServer(function(input, output, session) {
            "The red, blue and black lines represent maximum, minimum and mean ",
            "annual temperatures, respectively", input$n)
   })
+  # Trumpet curve download
+  output$downloadTrumpet <- downloadHandler(
+    filename = function() {paste0("TrumpetCurve_", currentLoc()$name, ".png")},
+    content = function(file) {
+      ggsave(file, plot = pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
+                                                paste0(input$years[2], "-12-31")),
+             device = "png")
+    }
+  )
+  
   
   ### Metadata
   # Location metadata
