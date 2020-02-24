@@ -18,41 +18,6 @@ con <- pft.dbconnect(classPath= "C:/ojdbc6.jar",
                      username="", password="")
 
 #-------------------------------------------------------------------------------------
-#################### START UP #######################################################
-
-# Load packages
-library(shiny)
-library(dygraphs)
-library(leaflet)
-library(htmlTable)
-library(DT)
-library(dplyr)
-library(DBI)
-library(leafpop)
-library(plotKML)
-library(rgdal)
-library(shinycssloaders)
-
-library(htmlwidgets)
-library(webshot)
-#webshot::install_phantomjs()
-
-
-enableBookmarking("url")
-
-# Get locations
-locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
-                               " EXTRACT(year FROM END_DATE),",
-                               " MIN_DEPTH, MAX_DEPTH,",
-                               " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM YGSIDS.PFT_SUMMARY_LOC",
-                               " ORDER BY NAME DESC"
-))
-
-names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
-                 "lat", "long", "permafrost")
-
-#-------------------------------------------------------------------------------------
 #################### FUNCTIONS #######################################################
 ########## f.link: Add link to locs ##########
 f.link <- function(locs) {
@@ -68,28 +33,17 @@ f.link <- function(locs) {
   return(locsl)
 }
 ########## pft.map: Leaflet map ##########
-pft.map <- function(loc, zoom=FALSE) {
+pft.map <- function(loc) {
   
   # Set up icon colours
   pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
   # Create map
-  if (zoom==TRUE){
-    loc <- as.data.frame(loc)
-    leaflet(loc) %>%
-      addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-      addCircleMarkers(lng=loc$long, lat=loc$lat, 
-                       popup=leafpop::popupTable(loc, row.numbers=FALSE, feature.id=FALSE),
-                       color = ~pal(permafrost), opacity=1)  %>%
-      leaflet::addLegend("topright", pal = pal, values = ~permafrost)
-  }
-  else if (zoom==FALSE){
-    leaflet(loc) %>%
-      addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-      addCircleMarkers(lng=loc$long, lat=loc$lat,
-                       popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                       color = ~pal(permafrost), opacity=1) %>%
-      leaflet::addLegend("topright", pal = pal, values = ~permafrost)
-  }
+  leaflet(loc) %>%
+    addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addCircleMarkers(lng=loc$long, lat=loc$lat,
+                     popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
+                     color = ~pal(permafrost), opacity=1) %>%
+    leaflet::addLegend("topright", pal = pal, values = ~permafrost)
   
 }
 
@@ -355,6 +309,44 @@ method.met <- function(method) {
 
 
 #-------------------------------------------------------------------------------------
+#################### START UP #######################################################
+
+# Load packages
+library(shiny)
+library(dygraphs)
+library(leaflet)
+library(htmlTable)
+library(DT)
+library(dplyr)
+library(DBI)
+library(leafpop)
+library(plotKML)
+library(rgdal)
+library(shinycssloaders)
+
+library(htmlwidgets)
+library(webshot)
+#webshot::install_phantomjs()
+
+
+enableBookmarking("url")
+
+# Get locations
+locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
+                               " EXTRACT(year FROM END_DATE),",
+                               " MIN_DEPTH, MAX_DEPTH,",
+                               " LATITUDE, LONGITUDE, PERMAFROST",
+                               " FROM YGSIDS.PFT_SUMMARY_LOC",
+                               " ORDER BY NAME DESC"
+))
+
+names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
+                 "lat", "long", "permafrost")
+
+# Create all locations map
+map <- pft.map(locs)
+
+#-------------------------------------------------------------------------------------
 #################### UI ###############################################################
 
 # Define UI for application
@@ -526,12 +518,13 @@ server <- shinyServer(function(input, output, session) {
   ### OUTPUTS
   # All locations MAP
   output$mymap <- renderLeaflet({
-    pft.map(locs, zoom=FALSE)
+    map
   })
   
   # Single location MAP
   output$locmap <- renderLeaflet({
-    pft.map(loc=currentLoc(), zoom=TRUE)
+    cloc <- currentLoc()
+    setView(map, lng=cloc$long, lat=cloc$lat, zoom=15)
   })
   
   ### Locations download
