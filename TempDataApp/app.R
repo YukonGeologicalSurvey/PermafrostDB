@@ -19,21 +19,22 @@ con <- pft.dbconnect(classPath= "C:/ojdbc6.jar",
 
 #-------------------------------------------------------------------------------------
 #################### FUNCTIONS #######################################################
-########## f.link: Add link to locs ##########
-f.link <- function(locs) {
-  links <- c()
-  for (i in locs$name) {
-    link <- c(paste0("'<a href = \"/?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
-                     "&loc=%22", i, "%22&loc-selectized=%22%22",
-                     "&Navbar=%22Temperature%22\"> See site data here </a>'"))
-    links <- c(links, link)
-  }
-  locsl <- cbind(locs, links)
-  
-  return(locsl)
-}
 ########## pft.map: Leaflet map ##########
 pft.map <- function(loc) {
+  
+  # Function to add link to locs
+  f.link <- function(locs) {
+    links <- c()
+    for (i in locs$name) {
+      link <- c(paste0("'<a href = \"/?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
+                       "&loc=%22", i, "%22&loc-selectized=%22%22",
+                       "&Navbar=%22Temperature%22\"> See site data here </a>'"))
+      links <- c(links, link)
+    }
+    locsl <- cbind(locs, links)
+    
+    return(locsl)
+  }
   
   # Set up icon colours
   pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
@@ -60,12 +61,10 @@ pft.query <- function(con, location) { #aggr
   #     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
   #     
   # } else {
-  obs <- dbGetQuery(con, paste0("SELECT TEMPDATE, MONTH, YEAR, DEPTH, ROUND(AVG(TEMP), 2) AS DAILYTEMP, ",
+  obs <- dbGetQuery(con, paste0("SELECT TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
                                 "WHO_ID, METHOD_ID ",
-                                "FROM YGSIDS.PFT_SUMMARY ",
-                                "WHERE NAME = '", location, "' ",
-                                "GROUP BY TEMPDATE, NAME, DEPTH, MONTH, YEAR, WHO_ID, METHOD_ID ",
-                                "ORDER BY TEMPDATE, DEPTH DESC"))
+                                "FROM YGSIDS.PFT_MVW_SUMMARY2 ",
+                                "WHERE NAME = '", location, "' "))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
   obs$YEAR <- as.Date(obs$YEAR)
@@ -79,7 +78,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
   
   if (aggr=="none") {
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
-                                  "FROM YGSIDS.PFT_SUMMARY ",
+                                  "FROM YGSIDS.PFT_MVW_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
                                   "AND DEPTH >= ", depth_max, " AND DEPTH <=", depth_min, 
                                   " AND TEMPTIME BETWEEN '", date_s ,"' AND '", date_e, "'",
@@ -336,7 +335,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
                                " EXTRACT(year FROM END_DATE),",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM YGSIDS.PFT_SUMMARY_LOC",
+                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
                                " ORDER BY NAME DESC"
 ))
 
@@ -585,7 +584,7 @@ server <- shinyServer(function(input, output, session) {
   # Time series description
   output$dygraph_txt <- renderText({
     paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
-           "where every line represents a different depth.", input$n)
+           "where every line represents a different depth.")
   })
   
   ### Table
@@ -610,7 +609,7 @@ server <- shinyServer(function(input, output, session) {
   output$trumpetCurves_txt <- renderText({
     paste0("A trumpet curve displays annual permafrost thermal regimes. ",
            "The red, blue and black lines represent maximum, minimum and mean ",
-           "annual temperatures, respectively", input$n)
+           "annual temperatures, respectively")
   })
   # Trumpet curve download
   output$downloadTrumpet <- downloadHandler(
