@@ -19,21 +19,22 @@ con <- pft.dbconnect(classPath="C:/ojdbc6.jar", username="", password="")
 enableBookmarking("url")
 #-------------------------------------------------------------------------------------
 ###################### FUNCTIONS #######################
-########## f.link: Add link to locs ##########
-f.link <- function(locs) {
-  links <- c()
-  for (i in locs$name) {
-    link <- c(paste0("'<a href = \"/?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
-                     "&Navbar=%22Data%22\"> See site data here </a>'"))
-    links <- c(links, link)
-  }
-  locsl <- cbind(locs, links)
-  
-  return(locsl)
-}
 
 ########## pft.map: Create map of all locations ###########
 pft.map <- function(loc) {
+  
+  # Define f.link function
+  f.link <- function(tab) {
+    links <- c()
+    for (i in tab$name) {
+      link <- c(paste0("'<a href = \"/?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
+                       "&Navbar=%22Data%22\"> See site data here </a>'"))
+      links <- c(links, link)
+    }
+    tabl <- cbind(tab, links)
+    
+    return(tabl)
+  }
   
   # Create map
   leaflet(loc) %>%
@@ -50,8 +51,8 @@ current.loc <- function(n){
   return(cloc)
 }
 
-########## f.soil_desc ##############################################
-f.soil_desc <- function(loc) {
+########## f.soil ##############################################
+f.soil <- function(loc) {
   site_id <- loc
   tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, BOUNDARY, SOIL_DESC, ",
                                 "CLASS, USC_CODE, COMMENTS ",
@@ -62,8 +63,8 @@ f.soil_desc <- function(loc) {
   return(tab)
 }
 
-########## f.pf_desc ##############################################
-f.pf_desc <- function(loc) {
+########## f.permafrost ##############################################
+f.permafrost <- function(loc) {
   site_id <- loc
   tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, TEMPERATURE, SURFACE_THAW, ",
                                 "PERMAFROST_DESC, ICE_CODE, CLASS, PERCENT_ICE, COMMENTS ",
@@ -74,8 +75,8 @@ f.pf_desc <- function(loc) {
   return(tab)
 }
 
-########## f.surface_desc ##############################################
-f.surface_desc <- function(loc) {
+########## f.surface ##############################################
+f.surface <- function(loc) {
   site_id <- loc
   tab <- dbGetQuery(con, paste0("SELECT OBSERVATION_DATE, VEG_TYPE, VEG_HEIGHT, VEG_DENSITY, ",
                                 "ORGANIC_THICKNESS, TOPOGRAPHY, DRAINAGE, SURFICIAL_GEOLOGY, ",
@@ -145,6 +146,7 @@ ui <- function(request){fluidPage(
              tabPanel("Map", 
                       leafletOutput("mymap", height='750') %>% 
                         withSpinner(color="#0097A9"),
+                      br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
                       downloadButton('downloadLoc.kml', "Download locations KML"),
                       downloadButton('downloadLoc.shp', "Download locations shapefile")
@@ -181,7 +183,7 @@ ui <- function(request){fluidPage(
                                              fluidRow(column(12, tableOutput("enviro_testing")))
                                            )),
                                   tabPanel("Metadata",
-                                           uiOutput("metadata"))#,
+                                           uiOutput("meta"))#,
                                   # tabPanel("Install",
                                   #          fluidRow(
                                   #            column(6, tableOutput("install_desc")),
@@ -215,13 +217,13 @@ server <- function(input, output, session) {
   # Create current location table reactive to loc input
   currentLoc <- reactive({current.loc(input$loc)})
   # Create soil description table
-  soil_desc_input <- reactive(f.soil_desc(currentLoc()))
+  soil_input <- reactive(f.soil(input$loc))
   # Create permafrost description table
-  permafrost_desc_input <- reactive(f.pf_desc(currentLoc()))
+  permafrost_input <- reactive(f.permafrost(input$loc))
   # Create surface description table
-  surface_desc_input <- reactive(f.surface_desc(currentLoc()))
+  surface_input <- reactive(f.surface(input$loc))
   # Create surface description table
-  metadata_input <- reactive(f.meta(currentLoc()))
+  meta_input <- reactive(f.meta(input$loc))
   
   ### Outputs
   ## All locations map
@@ -277,42 +279,42 @@ server <- function(input, output, session) {
   
   ## Soil description
   output$soil <- renderUI({
-    if(is.null(soil_desc_input()))
+    if(is.null(soil_input()))
       return("No data available")
     tableOutput("soil_desc")
   })
   output$soil_desc <- renderTable({
-    soil_desc_input()
+    soil_input()
   })
   
   ## Permafrost description
   output$permafrost <- renderUI({
-    if(nrow(permafrost_desc_input())==0)
+    if(nrow(permafrost_input())==0)
       return("No data available")
     tableOutput("permafrost_desc")
   })
   output$permafrost_desc <- renderTable({
-    permafrost_desc_input()
+    permafrost_input()
   })
   
   ## Surface description
   output$surface <- renderUI({
-    if(nrow(surface_desc_input())==0)
+    if(nrow(surface_input())==0)
       return("No data available")
     tableOutput("surface_desc")
   })
   output$surface_desc <- renderTable({
-    surface_desc_input()
+    surface_input()
   })
   
   ## Metadata
-  output$metadata <- renderUI({
-    if(nrow(metadata_input())==0)
+  output$meta <- renderUI({
+    if(nrow(meta_input())==0)
       return("No data available")
-    tableOutput("metadata_")
+    tableOutput("metadata")
   })
-  output$metadata_ <- renderTable({
-    metadata_input()
+  output$metadata <- renderTable({
+    meta_input()
   })
   
   ## Samples
