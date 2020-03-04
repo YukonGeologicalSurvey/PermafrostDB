@@ -324,8 +324,7 @@ library(plotKML)
 library(rgdal)
 library(shinycssloaders)
 
-library(htmlwidgets)
-library(webshot)
+#library(webshot)
 #webshot::install_phantomjs()
 
 
@@ -397,8 +396,8 @@ ui <- function(request){fluidPage(
                       tabsetPanel(type = 'tabs',
                                   
                                   tabPanel("Time series", 
-                                           br(),
-                                           downloadButton("downloadPlot", "Download plot"),
+                                           #br(),
+                                           #downloadButton("downloadPlot", "Download plot"),
                                            br(),
                                            dygraphOutput("dygraph", width = "95%") %>% 
                                              withSpinner(color="#0097A9"),
@@ -574,14 +573,14 @@ server <- shinyServer(function(input, output, session) {
     dyplot()
   })
   # Time series download
-  output$downloadPlot <- downloadHandler(
-    filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
-    content = function(file) {
-      saveWidget(dyplot(), "temp.html", selfcontained = FALSE)
-      webshot("temp.html", file = file)
-    },
-    contentType = 'image/png'
-  )
+  # output$downloadPlot <- downloadHandler(
+  #   filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
+  #   content = function(file) {
+  #     saveWidget(dyplot(), "temp.html", selfcontained = FALSE)
+  #     webshot("temp.html", file = file)
+  #   },
+  #   contentType = 'image/png'
+  # )
   # Time series description
   output$dygraph_txt <- renderText({
     paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
