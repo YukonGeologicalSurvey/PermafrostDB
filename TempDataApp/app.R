@@ -325,17 +325,20 @@ library(rgdal)
 library(shinycssloaders)
 
 library(webshot)
-webshot::install_phantomjs()
+#webshot::install_phantomjs()
 
 
 enableBookmarking("url")
 
 # Get locations
-locs <- dbGetQuery(con, paste0("SELECT NAME, EXTRACT(year FROM START_DATE),",
-                               " EXTRACT(year FROM END_DATE),",
+locs <- dbGetQuery(con, paste0("SELECT NAME,",
+                               #" EXTRACT(year FROM START_DATE),", 
+                               #" EXTRACT(year FROM END_DATE),", 
+                               " START_DATE, END_DATE,",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
+                               #" FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
+                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC2",
                                " ORDER BY NAME DESC"
 ))
 
@@ -367,10 +370,12 @@ ui <- function(request){fluidPage(
                   ")),
   
   # Setup navigation bar (Map, Temperature)
-  navbarPage(title = "", id = "Navbar",
+  navbarPage(title = "", id = "Navbar", selected = "Map",
+             
+             tabPanel(title=HTML("</a></li><li><a href='http://emr-permafrost:3838/Yukon-Permafrost-Homepage/#' target='_self' >Home")),
              
              tabPanel("Map", 
-                      leafletOutput("mymap", height='750') %>% withSpinner(color="#0097A9"),
+                      leafletOutput("mymap", height='750') %>% withSpinner(color="#0097A9"), 
                       br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
                       downloadButton('downloadLoc.kml', "Download locations KML"),
