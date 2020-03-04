@@ -134,7 +134,9 @@ ui <- function(request){fluidPage(
         .navbar-default .navbar-nav > li > a:hover {color: white;background-color:#d99700;}
                   ")),
   
-  navbarPage(title = "", id = "Navbar",
+  navbarPage(title = "", id = "Navbar", selected = "Map",
+             
+             tabPanel(title=HTML("</a></li><li><a href='http://emr-permafrost:3838/Yukon-Permafrost-Homepage/#' target='_self' >Home")),
              
              tabPanel("Map", 
                       leafletOutput("mymap", height='750') %>% 
