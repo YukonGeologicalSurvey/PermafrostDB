@@ -64,10 +64,11 @@ pft.query <- function(con, location) { #aggr
   obs <- dbGetQuery(con, paste0("SELECT TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
                                 "WHO_ID, METHOD_ID ",
                                 "FROM YGSIDS.PFT_MVW_SUMMARY2 ",
-                                "WHERE NAME = '", location, "' "))
+                                "WHERE NAME = '", location, "' ",
+                                "ORDER BY DEPTH DESC, TEMPDATE" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
-  obs$YEAR <- as.Date(obs$YEAR)
+  #obs$YEAR <- as.Date(obs$YEAR)
   # } 
   names(obs) <- c("date", "month", "year", "depth", "temp", "who_id", "method_id")
   return(obs)
@@ -352,7 +353,7 @@ map <- pft.map(locs)
 ui <- function(request){fluidPage( 
   
   # Application title
-  titlePanel(title = span("Yukon Ground Temperature Data", 
+  titlePanel(title = span("Yukon Ground Temperature Data Portal (preliminary version)", 
                           style = "color: Black; font-size: 28px")
   ),
   
