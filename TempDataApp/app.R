@@ -26,7 +26,7 @@ pft.map <- function(loc) {
   f.link <- function(locs) {
     links <- c()
     for (i in locs$name) {
-      link <- c(paste0("'<a href = \"/?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
+      link <- c(paste0("'<a href = \"?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
                        "&loc=%22", i, "%22&loc-selectized=%22%22",
                        "&Navbar=%22Temperature%22\"> See site data here </a>'"))
       links <- c(links, link)
@@ -325,7 +325,7 @@ library(rgdal)
 library(shinycssloaders)
 
 library(webshot)
-#webshot::install_phantomjs()
+webshot::install_phantomjs()
 
 
 enableBookmarking("url")
