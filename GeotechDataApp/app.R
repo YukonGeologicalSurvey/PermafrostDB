@@ -27,7 +27,7 @@ pft.map <- function(loc) {
   f.link <- function(tab) {
     links <- c()
     for (i in tab$name) {
-      link <- c(paste0("'<a href = \"/?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
+      link <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
                        "&Navbar=%22Data%22\"> See site data here </a>'"))
       links <- c(links, link)
     }
