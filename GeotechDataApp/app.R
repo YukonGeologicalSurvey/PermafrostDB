@@ -124,7 +124,7 @@ map <- pft.map(locs)
 ui <- function(request){fluidPage(
   
   # Application title
-  titlePanel("Yukon Geotechnical Data"),# Set colour of Navigation bar
+  titlePanel("Yukon Geotechnical Data Portal (preliminary version)"),# Set colour of Navigation bar
   tags$style(HTML(" 
         .navbar { background-color: #F2A900;}
         .navbar-default .navbar-nav > li > a {color:white;}
@@ -361,6 +361,7 @@ server <- function(input, output, session) {
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
 #-------------------------------------------------------------------------------------
+
 
 
 
