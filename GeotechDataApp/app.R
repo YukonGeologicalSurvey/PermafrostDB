@@ -44,13 +44,6 @@ pft.map <- function(loc) {
                      color = "#0097A9", opacity=1)
 }
 
-########## current.loc: Reactive function for locs subset ###########
-## Subsets the locs table to a single location
-current.loc <- function(n){
-  cloc <- locs[locs$name==n,]
-  return(cloc)
-}
-
 ########## f.soil ##############################################
 f.soil <- function(loc) {
   site_id <- loc
@@ -214,8 +207,6 @@ server <- function(input, output, session) {
   ###=============================================================================
   
   ### Reactive output functions
-  # Create current location table reactive to loc input
-  currentLoc <- reactive({current.loc(input$loc)})
   # Create soil description table
   soil_input <- reactive(f.soil(input$loc))
   # Create permafrost description table
@@ -273,7 +264,7 @@ server <- function(input, output, session) {
   
   ## Single location map
   output$locmap <- renderLeaflet({
-    cloc <- currentLoc()
+    cloc <- locs[locs$name==input$loc,]
     setView(map, lng=cloc$long, lat=cloc$lat, zoom=15)
   })
   
