@@ -2,20 +2,7 @@
 #--------------# Trumpet curve and time series plot combinatino app #-----------------#
 #######################################################################################
 
-pft.dbconnect <- function(classPath, username, password) {
-    require(RJDBC)
-    require(DBI)
-    
-    jdbcDriver <- JDBC("oracle.jdbc.OracleDriver", classPath)
-    
-    con <- dbConnect(jdbcDriver, "jdbc:oracle:thin:@//199.247.170.218:1521/YGS50D", username, password)
-    
-    return(con)
-}
-
-# Connect to database
-con <- pft.dbconnect(classPath= "C:/ojdbc6.jar",
-                     username="", password="")
+source("dbconnection.R")
 
 #-------------------------------------------------------------------------------------
 #################### FUNCTIONS #######################################################
@@ -354,11 +341,6 @@ map <- pft.map(locs)
 # Define UI for application
 ui <- function(request){fluidPage( 
   
-  # Application title
-  titlePanel(title = span("Yukon Ground Temperature Data Portal (preliminary version)", 
-                          style = "color: Black; font-size: 28px")
-  ),
-  
   # Set colour of Navigation bar
   tags$style(HTML("
         .navbar { background-color: #F2A900;}
@@ -371,9 +353,7 @@ ui <- function(request){fluidPage(
                   ")),
   
   # Setup navigation bar (Map, Temperature)
-  navbarPage(title = "", id = "Navbar", selected = "Map",
-             
-             tabPanel(title=HTML("</a></li><li><a href='http://emr-permafrost:3838/Yukon-Permafrost-Homepage/#' target='_self' >Home")),
+  navbarPage(title = "", id = "Navbar", 
              
              tabPanel("Map", 
                       leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
