@@ -132,12 +132,13 @@ ui <- function(request){fluidPage(
         .navbar-default .navbar-nav > .active > a:focus,
         .navbar-default .navbar-nav > .active > a:hover {color: white;background-color: #d99700;}
         .navbar-default .navbar-nav > li > a:hover {color: white;background-color:#d99700;}
+		#mymap {height: calc(100vh - 250px) !important;
                   ")),
   
   navbarPage(title = "", id = "Navbar",
              
              tabPanel("Map", 
-                      leafletOutput("mymap", height='750') %>% 
+                      leafletOutput("mymap") %>% 
                         withSpinner(color="#0097A9"),
                       br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
