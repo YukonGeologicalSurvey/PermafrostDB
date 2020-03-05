@@ -2,19 +2,7 @@
 #--------------# Geotechnical data viewing app #-----------------#
 #######################################################################################
 
-pft.dbconnect <- function(classPath, username, password) {
-  require(RJDBC)
-  require(DBI)
-  
-  jdbcDriver <- JDBC("oracle.jdbc.OracleDriver", classPath)
-  
-  con <- dbConnect(jdbcDriver, "jdbc:oracle:thin:@//199.247.170.218:1521/YGS50D", username, password)
-  
-  return(con)
-}
-
-# Connect to database
-con <- pft.dbconnect(classPath="C:/ojdbc6.jar", username="", password="")
+source('dbconnection.R')
 
 enableBookmarking("url")
 #-------------------------------------------------------------------------------------
@@ -123,8 +111,6 @@ map <- pft.map(locs)
 # Define UI for application that draws a histogram
 ui <- function(request){fluidPage(
   
-  # Application title
-  titlePanel("Yukon Geotechnical Data Portal (preliminary version)"),# Set colour of Navigation bar
   tags$style(HTML(" 
         .navbar { background-color: #F2A900;}
         .navbar-default .navbar-nav > li > a {color:white;}
@@ -135,9 +121,7 @@ ui <- function(request){fluidPage(
         #mymap {height: calc(100vh - 250px) !important; 
                   ")),
   
-  navbarPage(title = "", id = "Navbar", selected = "Map",
-             
-             tabPanel(title=HTML("</a></li><li><a href='http://emr-permafrost:3838/Yukon-Permafrost-Homepage/#' target='_self' >Home")),
+  navbarPage(title = "", id = "Navbar",
              
              tabPanel("Map", 
                       leafletOutput("mymap") %>% 
@@ -364,8 +348,3 @@ server <- function(input, output, session) {
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
 #-------------------------------------------------------------------------------------
-
-
-
-
-
