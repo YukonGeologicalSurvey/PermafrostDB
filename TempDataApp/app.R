@@ -39,16 +39,8 @@ pft.map <- function(loc) {
 ########## pft.query and pft.subset: Reactive table and dygraph query and subset #################################
 
 ## Query daily average data from PFT_SUMMARY in database 
-pft.query <- function(con, location) { #aggr
-  # if (aggr=="none") {
-  #     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
-  #                                   "FROM PFT_SUMMARY ",
-  #                                   "WHERE NAME = '", location, "' ",
-  #                                   "ORDER BY TEMPTIME, DEPTH DESC"))
-  #     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
-  #     
-  # } else {
-  obs <- dbGetQuery(con, paste0("SELECT TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
+pft.query <- function(con, location) { 
+  obs <- dbGetQuery(con, paste0("SELECT NAME, TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
                                 "WHO_ID, METHOD_ID ",
                                 "FROM YGSIDS.PFT_MVW_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
@@ -56,8 +48,7 @@ pft.query <- function(con, location) { #aggr
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
   #obs$YEAR <- as.Date(obs$YEAR)
-  # } 
-  names(obs) <- c("date", "month", "year", "depth", "temp", "who_id", "method_id")
+  names(obs) <- c("name", "date", "month", "year", "depth", "temp", "who_id", "method_id")
   return(obs)
 }
 
@@ -65,13 +56,15 @@ pft.query <- function(con, location) { #aggr
 pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
   
   if (aggr=="none") {
+    location <- unique(obs$name)
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
                                   "FROM YGSIDS.PFT_MVW_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
-                                  "AND DEPTH >= ", depth_max, " AND DEPTH <=", depth_min, 
-                                  " AND TEMPTIME BETWEEN '", date_s ,"' AND '", date_e, "'",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
+    names(obs) <- c("date", "depth", "temp")
+    obs <- obs[obs$depth >= depth_max & obs$depth <= depth_min &
+                 obs$date >= date_s & obs$date <= date_e,]
     
   } else if (aggr=="day") {
     obs <- obs[obs$depth >= depth_max & obs$depth <= depth_min &
@@ -280,13 +273,13 @@ method.met <- function(method) {
                                 "('", method, "')"))
   
   tab <- reshape(tab, times=c("ID", "Precision", "Accuracy", "Method", "Sensor manufacturer",
-                              "Sensor manufacturer model", "Sensor manufacturer date", "Logger manufacturer",
-                              "Logger manufacturer model", "logger manufacturer date", "Radiation shield",
+                              "Sensor manufacturer model", "Logger manufacturer",
+                              "Logger manufacturer model", "Radiation shield",
                               "units"),
                  ids=NULL,
                  varying = c("ID", "PRECISION", "ACCURACY", "METHOD", "SENSOR_MANUFACTURER",
-                             "SENSOR_MANUFACTURER_MODEL", "SENSOR_MANUFACTURER_DATE", "LOGGER_MANUFACTURER",
-                             "LOGGER_MANUFACTURER_MODEL", "LOGGER_MANUFACTURER_DATE", "RADIATION_SHIELD",
+                             "SENSOR_MANUFACTURER_MODEL", "LOGGER_MANUFACTURER",
+                             "LOGGER_MANUFACTURER_MODEL", "RADIATION_SHIELD",
                              "UNITS"),
                  v.names= "value",
                  direction="long", sep="")
@@ -371,7 +364,7 @@ ui <- function(request){fluidPage(
                                            selected="")),
                         column(2,
                                selectInput("aggr", "Aggregation:",
-                                           choices=c("day", "month", "year"), #none
+                                           choices=c("none", "day", "month", "year"),
                                            selected="day")),
                         column(3,
                                uiOutput("secondSelection")),
