@@ -52,7 +52,7 @@ pft.query <- function(con, location) { #aggr
                                 "WHO_ID, METHOD_ID ",
                                 "FROM YGSIDS.PFT_MVW_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
-                                "ORDER BY DEPTH DESC, TEMPDATE" ))
+                                "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
   #obs$YEAR <- as.Date(obs$YEAR)
