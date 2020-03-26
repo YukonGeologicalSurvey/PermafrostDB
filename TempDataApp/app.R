@@ -26,12 +26,12 @@ pft.map <- function(loc) {
   # Set up icon colours
   pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
   # Create map
-  leaflet(loc) %>%
-    addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-    addCircleMarkers(lng=loc$long, lat=loc$lat,
-                     popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                     color = ~pal(permafrost), opacity=1) %>%
-    leaflet::addLegend("topright", pal = pal, values = ~permafrost)
+    leaflet(loc) %>%
+      addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+      addCircleMarkers(lng=loc$long, lat=loc$lat,
+                       popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
+                       color = ~pal(permafrost), opacity=1) %>%
+      leaflet::addLegend("topright", pal = pal, values = ~permafrost)
   
 }
 
@@ -317,8 +317,8 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " START_DATE, END_DATE,",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               #" FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
-                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC2",
+                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
+                               #" FROM YGSIDS.PFT_MVW_SUMMARY_LOC2",
                                " ORDER BY NAME DESC"
 ))
 
@@ -349,12 +349,12 @@ ui <- function(request){fluidPage(
   navbarPage(title = "", id = "Navbar", 
              
              tabPanel("Map", 
-                      leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
-                      br(),
-                      downloadButton("downloadLoc.csv", "Download locations CSV"),
-                      downloadButton('downloadLoc.kml', "Download locations KML"),
-                      downloadButton('downloadLoc.shp', "Download locations shapefile")),
-             
+                       leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
+                       br(),
+                       downloadButton("downloadLoc.csv", "Download locations CSV"),
+                       downloadButton('downloadLoc.kml', "Download locations KML"),
+                       downloadButton('downloadLoc.shp', "Download locations shapefile")),
+                      
              tabPanel("Temperature", 
                       # Locations and years panels
                       fluidRow(
@@ -373,7 +373,7 @@ ui <- function(request){fluidPage(
                       ),
                       
                       # Setup tabs within 'Temperature'
-                      tabsetPanel(type = 'tabs',
+                      tabsetPanel(id = "temp_tabs", type = 'tabs',
                                   
                                   tabPanel("Time series", 
                                            br(),
@@ -396,8 +396,8 @@ ui <- function(request){fluidPage(
                                            br(),
                                            downloadButton("downloadTrumpet", "Download plot"),
                                            plotOutput("TrumpetCurves",
-                                                      width = "850px",
-                                                      height = "600px") %>% 
+                                                                        width = "850px",
+                                                                        height = "600px") %>% 
                                              withSpinner(color="#0097A9"),
                                            br(),
                                            textOutput("trumpetCurves_txt"),
@@ -493,8 +493,9 @@ server <- shinyServer(function(input, output, session) {
   
   # Re-format currentObs for downloadData and table
   reformatTable <- reactive({pft.tformat(currentObs())})
-  
+
   ### OUTPUTS
+
   # All locations MAP
   output$mymap <- renderLeaflet({
     map
@@ -548,10 +549,31 @@ server <- shinyServer(function(input, output, session) {
     }
   )
   
+  # Tab show/hide reactive expression
+   tab_hide <- reactive({
+     if (is.na(currentLoc()$start_year)){
+       tab <- "hide"
+     } else if (!is.na(currentLoc()$start_year)) {
+       tab <- "show"}
+   })
+   
+   observe({
+     if (tab_hide()=="show") {
+       showTab("temp_tabs", "Time series")
+       showTab("temp_tabs", "Table")
+       showTab("temp_tabs", "Trumpet curves")
+     } else if (tab_hide()=="hide") {
+       hideTab("temp_tabs", "Time series")
+       hideTab("temp_tabs", "Table")
+       hideTab("temp_tabs", "Trumpet curves")
+     }
+   })
+  
   ### Time series
-  output$dygraph <- renderDygraph({
-    dyplot()
-  })
+    output$dygraph <- renderDygraph({
+        dyplot()
+    })
+  
   # Time series download
   output$downloadPlot <- downloadHandler(
     filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
@@ -598,9 +620,9 @@ server <- shinyServer(function(input, output, session) {
       ggsave(file, plot = pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
                                                 paste0(input$years[2], "-12-31")),
              device = "png")
-    }
-  )
-  
+      }
+    )
+
   
   ### Metadata
   # Location metadata
