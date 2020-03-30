@@ -324,7 +324,7 @@ server <- function(input, output, session) {
     site_id <- input$loc
     tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, BULK_DENSITY, DRY_DENSITY, N_VALUE, ",
                                   "LPT_N, GS, MOISTURE, LL, PL, PI, GRAVEL, SAND, FINES, SILT, ",
-                                  "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, TEST_COM, ",
+                                  "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, ",
                                   "TOP_DEPTH, COMMENTS ",
                                   "FROM YGSIDS.PF_GEOTECH_TESTING ",
                                   "WHERE SITE_ID = '", site_id, "' ",
