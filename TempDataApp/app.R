@@ -15,7 +15,7 @@ pft.map <- function(loc) {
     for (i in locs$name) {
       link <- c(paste0("'<a href = \"?_inputs_&aggr=%22day%22&aggr-selectized=%22%22",
                        "&loc=%22", i, "%22&loc-selectized=%22%22",
-                       "&Navbar=%22Temperature%22\"> See site data here </a>'"))
+                       "&Navbar=%22Data%22\"> See site data here </a>'"))
       links <- c(links, link)
     }
     locsl <- cbind(locs, links)
@@ -24,14 +24,14 @@ pft.map <- function(loc) {
   }
   
   # Set up icon colours
-  pal <- colorFactor(c("#DC4405", "grey40", "#0097A9"), domain = c("no", "undetermined", "yes"))
+  pal <- colorFactor(c("#DC4405", "grey40", "#512A44", "#0097A9"), domain = c("No", "Undetermined", "Yes", "Weather station"))
   # Create map
-    leaflet(loc) %>%
-      addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-      addCircleMarkers(lng=loc$long, lat=loc$lat,
-                       popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                       color = ~pal(permafrost), opacity=1) %>%
-      leaflet::addLegend("topright", pal = pal, values = ~permafrost)
+  leaflet(loc) %>%
+    addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addCircleMarkers(lng=loc$long, lat=loc$lat,
+                     popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
+                     color = ~pal(permafrost), opacity=1) %>%
+    leaflet::addLegend("topright", pal = pal, values = ~permafrost)
   
 }
 
@@ -40,9 +40,17 @@ pft.map <- function(loc) {
 
 ## Query daily average data from PFT_SUMMARY in database 
 pft.query <- function(con, location) { 
+  # obs <- dbGetQuery(con, paste0("SELECT LOCATION_ID, ",
+  #                               "TIME_START, MONTH, YEAR(TIME_START) AS YEAR, ", 
+  #                               "DEPTH_MIN, NUMERICAL_VALUE, ",
+  #                               "WHO_ID, METHOD_ID ",
+  #                               "FROM PERMAFROST.PFT_OBSERVATIONS ",
+  #                               "WHERE NAME = '", location, "' ",
+  #                               "ORDER BY TIME_START, DEPTH_MIN DESC" ))
+  
   obs <- dbGetQuery(con, paste0("SELECT NAME, TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
                                 "WHO_ID, METHOD_ID ",
-                                "FROM YGSIDS.PFT_MVW_SUMMARY2 ",
+                                "FROM PERMAFROST.PFT_MVW_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
                                 "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
@@ -58,7 +66,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
   if (aggr=="none") {
     location <- unique(obs$name)
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
-                                  "FROM YGSIDS.PFT_MVW_SUMMARY ",
+                                  "FROM PERMAFROST.PFT_MVW_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
@@ -97,6 +105,7 @@ pft.plot <- function(obs) {
   
   require(dygraphs)
   require(xts)
+  require(viridis)
   
   date <- data.frame(date=unique(obs$date))
   
@@ -121,19 +130,23 @@ pft.plot <- function(obs) {
   snamesLen <- length(snames)
   
   #plot time series
-  graph <- dygraph(qxts, ylab = "Temperature")
+  graph <- dygraph(qxts, ylab = "temperature (\u00B0C)", xlab = "date")
   
   # iterate to create series labels
   for (seriesNum in 1:snamesLen)
   {
-    graph <- graph %>% dySeries(paste0("V",seriesNum), label = snames[seriesNum])
+    graph <- graph %>% dySeries(paste0("V",seriesNum) 
+                               ,label = snames[seriesNum])
   }
   
   # Create plot
   graph <- graph %>%
-    dyLegend(width = 400) %>%
-    dyOptions(labelsUTC = TRUE, gridLineWidth = 0.1) %>%
-    dyHighlight(highlightSeriesOpts = list(strokeWidth = 2))
+    dyLegend(width = 100, labelsSeparateLines = TRUE, labelsDiv = 'legend') %>%
+    dyOptions(labelsUTC = TRUE, gridLineWidth = 0.1, 
+              colors = RColorBrewer::brewer.pal(snamesLen, "RdYlBu")
+              ) %>%
+    dyHighlight(highlightSeriesOpts = list(strokeWidth = 2)) %>%
+    dyLimit(limit = 0, strokePattern = "solid")
   
   # display graph
   graph 
@@ -147,6 +160,7 @@ pft.tformat <- function(table) {
   table <- reshape(table, idvar = 'date', v.names = 'temp', timevar = 'depth', direction = "wide")
   table$date <- as.character(table$date)
   colnames(table) <- gsub(pattern="temp.", replacement="", x=colnames(table))
+  colnames(table) <- c("Date", paste(colnames(table[-1]), " m"))
   return(table)
 }
 
@@ -200,10 +214,10 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
           strip.background = element_rect(fill="#7A9A01"),
           strip.text = element_text(colour = 'white')) +
     coord_flip() +
-    labs(x="depth (m)", y="temperature") +
+    labs(x="depth (m)", y="temperature (\u00B0C)") +
     geom_hline(yintercept = 0, linetype="dashed", color="grey") +    # vertical line at 0
     geom_vline(xintercept = 0, color="grey") +    # Horizontal line at 0
-    
+   
     geom_line(aes(x=depth, y=max), color="#DC4405", size=0.75) +     # Maximum line
     geom_point(aes(x=depth, y=max), color="#DC4405", size=2) + # firebrick2
     
@@ -237,11 +251,13 @@ current.loc <- function(n){
 ## Metadata
 # Location
 location.met <- function(loc) {
-  tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_LOCATIONS ",
+  tab <- dbGetQuery(con, paste0("SELECT ID, NAME, LATITUDE, LONGITUDE, ELEVATION, LOCATION_ACCURACY, ",
+                                "ELEVATION_ACCURACY, LOCAL_RELIEF, COMMENTS, PERMAFROST ",
+                                "FROM PERMAFROST.PFT_LOCATIONS ",
                                 "WHERE NAME = '", loc, "'"))
   
-  tab <- reshape(tab, times=c("ID", "Name", "Latitude", "longitude", "Elevation", "Location accuracy",
-                              "Elevation accuracy", "Local relief", "Comments", "Permafrost"),
+  tab <- reshape(tab, times=c("ID", "Name", "Latitude", "Longitude", "Elevation (m)", "Location accuracy (m)",
+                              "Elevation accuracy (m)", "Local relief (m)", "Comments", "Permafrost"),
                  ids=NULL,
                  varying = c("ID", "NAME", "LATITUDE", "LONGITUDE", "ELEVATION", "LOCATION_ACCURACY",
                              "ELEVATION_ACCURACY", "LOCAL_RELIEF", "COMMENTS", "PERMAFROST"),
@@ -253,7 +269,7 @@ location.met <- function(loc) {
 
 # Who
 who.met <- function(who) {
-  tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_WHO ",
+  tab <- dbGetQuery(con, paste0("SELECT * FROM PERMAFROST.PFT_WHO ",
                                 "WHERE ID IN ",
                                 "('", who, "')"))
   
@@ -268,7 +284,7 @@ who.met <- function(who) {
 
 # Method
 method.met <- function(method) {
-  tab <- dbGetQuery(con, paste0("SELECT * FROM YGSIDS.PFT_METHOD ",
+  tab <- dbGetQuery(con, paste0("SELECT * FROM PERMAFROST.PFT_METHOD ",
                                 "WHERE ID IN ",
                                 "('", method, "')"))
   
@@ -303,6 +319,7 @@ library(leafpop)
 library(plotKML)
 library(rgdal)
 library(shinycssloaders)
+library(stringr)
 
 library(webshot)
 #webshot::install_phantomjs()
@@ -317,8 +334,8 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " START_DATE, END_DATE,",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM YGSIDS.PFT_MVW_SUMMARY_LOC",
-                               #" FROM YGSIDS.PFT_MVW_SUMMARY_LOC2",
+                               " FROM PERMAFROST.PFT_MVW_SUMMARY_LOC",
+                               #" FROM PERMAFROST.PFT_MVW_SUMMARY_LOC2",
                                " ORDER BY NAME DESC"
 ))
 
@@ -349,13 +366,13 @@ ui <- function(request){fluidPage(
   navbarPage(title = "", id = "Navbar", 
              
              tabPanel("Map", 
-                       leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
-                       br(),
-                       downloadButton("downloadLoc.csv", "Download locations CSV"),
-                       downloadButton('downloadLoc.kml', "Download locations KML"),
-                       downloadButton('downloadLoc.shp', "Download locations shapefile")),
-                      
-             tabPanel("Temperature", 
+                      leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
+                      br(),
+                      downloadButton("downloadLoc.csv", "Download locations CSV"),
+                      downloadButton('downloadLoc.kml', "Download locations KML"),
+                      downloadButton('downloadLoc.shp', "Download locations shapefile")),
+             
+             tabPanel("Data", 
                       # Locations and years panels
                       fluidRow(
                         column(4,
@@ -379,8 +396,10 @@ ui <- function(request){fluidPage(
                                            br(),
                                            downloadButton("downloadPlot", "Download plot"),
                                            br(),
-                                           dygraphOutput("dygraph", width = "95%") %>% 
-                                             withSpinner(color="#0097A9"),
+                                           fluidRow(
+                                             column(10, dygraphOutput("dygraph", width = "95%") %>% 
+                                             withSpinner(color="#0097A9")),
+                                             column(2, textOutput("legend"))),
                                            br(),
                                            textOutput("dygraph_txt"),
                                            tags$head(tags$style("#dygraph_txt{color:grey;
@@ -396,8 +415,8 @@ ui <- function(request){fluidPage(
                                            br(),
                                            downloadButton("downloadTrumpet", "Download plot"),
                                            plotOutput("TrumpetCurves",
-                                                                        width = "850px",
-                                                                        height = "600px") %>% 
+                                                      width = "850px",
+                                                      height = "600px") %>% 
                                              withSpinner(color="#0097A9"),
                                            br(),
                                            textOutput("trumpetCurves_txt"),
@@ -462,7 +481,7 @@ server <- shinyServer(function(input, output, session) {
     LocObs <- currentLoc()
     # Set slider input
     sliderInput("depths",
-                "Depths:",
+                "Depths (m):",
                 min = unlist(LocObs["max_depth"]),
                 max = unlist(LocObs["min_depth"]),
                 value = c(unlist(LocObs["max_depth"]), unlist(LocObs["min_depth"])),
@@ -493,9 +512,9 @@ server <- shinyServer(function(input, output, session) {
   
   # Re-format currentObs for downloadData and table
   reformatTable <- reactive({pft.tformat(currentObs())})
-
+  
   ### OUTPUTS
-
+  
   # All locations MAP
   output$mymap <- renderLeaflet({
     map
@@ -550,29 +569,29 @@ server <- shinyServer(function(input, output, session) {
   )
   
   # Tab show/hide reactive expression
-   tab_hide <- reactive({
-     if (is.na(currentLoc()$start_year)){
-       tab <- "hide"
-     } else if (!is.na(currentLoc()$start_year)) {
-       tab <- "show"}
-   })
-   
-   observe({
-     if (tab_hide()=="show") {
-       showTab("temp_tabs", "Time series")
-       showTab("temp_tabs", "Table")
-       showTab("temp_tabs", "Trumpet curves")
-     } else if (tab_hide()=="hide") {
-       hideTab("temp_tabs", "Time series")
-       hideTab("temp_tabs", "Table")
-       hideTab("temp_tabs", "Trumpet curves")
-     }
-   })
+  tab_hide <- reactive({
+    if (is.na(currentLoc()$start_year)){
+      tab <- "hide"
+    } else if (!is.na(currentLoc()$start_year)) {
+      tab <- "show"}
+  })
+  
+  observe({
+    if (tab_hide()=="show") {
+      showTab("temp_tabs", "Time series")
+      showTab("temp_tabs", "Table")
+      showTab("temp_tabs", "Trumpet curves")
+    } else if (tab_hide()=="hide") {
+      hideTab("temp_tabs", "Time series")
+      hideTab("temp_tabs", "Table")
+      hideTab("temp_tabs", "Trumpet curves")
+    }
+  })
   
   ### Time series
-    output$dygraph <- renderDygraph({
-        dyplot()
-    })
+  output$dygraph <- renderDygraph({
+    dyplot()
+  })
   
   # Time series download
   output$downloadPlot <- downloadHandler(
@@ -598,7 +617,7 @@ server <- shinyServer(function(input, output, session) {
     filename = paste0(currentLoc(), "-", Sys.Date(), ".csv"),
     content = function(file) {
       obs <- reformatTable()
-      colnames(obs) <- gsub(pattern="temp.", replacement="", x=colnames(obs))
+      colnames(obs) <- gsub(pattern=" ", replacement="_", x=colnames(obs))
       write.csv(obs, file, row.names=FALSE)
     })
   
@@ -620,9 +639,9 @@ server <- shinyServer(function(input, output, session) {
       ggsave(file, plot = pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
                                                 paste0(input$years[2], "-12-31")),
              device = "png")
-      }
-    )
-
+    }
+  )
+  
   
   ### Metadata
   # Location metadata
