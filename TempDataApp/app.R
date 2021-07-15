@@ -143,7 +143,8 @@ pft.plot <- function(obs) {
   graph <- graph %>%
     dyLegend(width = 100, labelsSeparateLines = TRUE, labelsDiv = 'legend') %>%
     dyOptions(labelsUTC = TRUE, gridLineWidth = 0.1, 
-              colors = RColorBrewer::brewer.pal(snamesLen, "RdYlBu")
+              # colors = RColorBrewer::brewer.pal(snamesLen, "RdYlBu"),
+              colors = colorRampPalette(c("#DC4405", "#F2A900", "#7A9A01", "#0097A9"))(snamesLen)
               ) %>%
     dyHighlight(highlightSeriesOpts = list(strokeWidth = 2)) %>%
     dyLimit(limit = 0, strokePattern = "solid")
