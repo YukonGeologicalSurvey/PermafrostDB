@@ -50,7 +50,7 @@ pft.query <- function(con, location) {
   
   obs <- dbGetQuery(con, paste0("SELECT NAME, TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
                                 "WHO_ID, METHOD_ID ",
-                                "FROM PERMAFROST.PFT_MVW_SUMMARY2 ",
+                                "FROM PERMAFROST.PFT_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
                                 "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
@@ -66,7 +66,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
   if (aggr=="none") {
     location <- unique(obs$name)
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
-                                  "FROM PERMAFROST.PFT_MVW_SUMMARY ",
+                                  "FROM PERMAFROST.PFT_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
@@ -100,7 +100,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
 
 ########## pft.plot: Time series plotting function ####################################
 
-## Plot the data from obs in a dygraph time eries graph
+## Plot the data from obs in a dygraph time series graph
 pft.plot <- function(obs) {
   
   require(dygraphs)
@@ -109,7 +109,7 @@ pft.plot <- function(obs) {
   
   date <- data.frame(date=unique(obs$date))
   
-  depths <- unique(obs$depth)
+  depths <- sort(unique(obs$depth), decreasing = TRUE)
   series <- NULL
   snames <- NULL
   
@@ -160,6 +160,7 @@ pft.tformat <- function(table) {
   table <- reshape(table, idvar = 'date', v.names = 'temp', timevar = 'depth', direction = "wide")
   table$date <- as.character(table$date)
   colnames(table) <- gsub(pattern="temp.", replacement="", x=colnames(table))
+  table <- table[, c("date", sort(as.numeric(colnames(table[,-1])), decreasing=TRUE))]
   colnames(table) <- c("Date", paste(colnames(table[-1]), " m"))
   return(table)
 }
@@ -239,6 +240,14 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
 }
 
 
+########## filter.locs: Reactive function for locs filtered by string ###########
+
+## Filters the locs table to the names with string
+filter.locs <- function(s){
+    flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
+  return(flocs)
+}
+
 ########## current.loc: Reactive function for locs subset ###########
 
 ## Subsets the locs table to a single location
@@ -284,21 +293,30 @@ who.met <- function(who) {
 
 # Method
 method.met <- function(method) {
-  tab <- dbGetQuery(con, paste0("SELECT * FROM PERMAFROST.PFT_METHOD ",
-                                "WHERE ID IN ",
+
+  tab <- dbGetQuery(con, paste0("SELECT PERMAFROST.METHOD_LOOKUP.METHOD, PERMAFROST.PFT_METHOD.PRECISION, ",
+                                "PERMAFROST.PFT_METHOD.ACCURACY, PERMAFROST.PFT_METHOD.SENSOR_MANUFACTURER, ",
+                                "PERMAFROST.PFT_METHOD.SENSOR_MANUFACTURER_MODEL, PERMAFROST.PFT_METHOD.LOGGER_MANUFACTURER, ",
+                                "PERMAFROST.PFT_METHOD.LOGGER_MANUFACTURER_MODEL, PERMAFROST.PFT_METHOD.RADIATION_SHIELD, ",
+                                "PERMAFROST.PFT_METHOD.UNITS ",
+                                "FROM PERMAFROST.PFT_METHOD ",
+                                "INNER JOIN PERMAFROST.METHOD_LOOKUP ",
+                                "ON PERMAFROST.PFT_METHOD.METHOD_ID=PERMAFROST.METHOD_LOOKUP.METHOD_ID ",
+                                "WHERE PERMAFROST.PFT_METHOD.ID IN ",
                                 "('", method, "')"))
-  
-  tab <- reshape(tab, times=c("ID", "Precision", "Accuracy", "Method", "Sensor manufacturer",
+
+  tab <- reshape(tab, times=c("Method", "Precision", "Accuracy", "Sensor manufacturer",
                               "Sensor manufacturer model", "Logger manufacturer",
                               "Logger manufacturer model", "Radiation shield",
                               "units"),
                  ids=NULL,
-                 varying = c("ID", "PRECISION", "ACCURACY", "METHOD", "SENSOR_MANUFACTURER",
+                 varying = c("METHOD", "PRECISION", "ACCURACY", "SENSOR_MANUFACTURER",
                              "SENSOR_MANUFACTURER_MODEL", "LOGGER_MANUFACTURER",
                              "LOGGER_MANUFACTURER_MODEL", "RADIATION_SHIELD",
                              "UNITS"),
-                 v.names= "value",
-                 direction="long", sep="")
+
+  v.names= "value",
+  direction="long", sep="")
   tab <- tab[!is.na(tab$value), ]
   return(tab)
 }
@@ -334,16 +352,13 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " START_DATE, END_DATE,",
                                " MIN_DEPTH, MAX_DEPTH,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
-                               " FROM PERMAFROST.PFT_MVW_SUMMARY_LOC",
-                               #" FROM PERMAFROST.PFT_MVW_SUMMARY_LOC2",
-                               " ORDER BY NAME DESC"
+                               " FROM PERMAFROST.PFT_SUMMARY_LOC",
+                               #" FROM PERMAFROST.PFT_SUMMARY_LOC2",
+                               " ORDER BY NAME ASC"
 ))
 
 names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
                  "lat", "long", "permafrost")
-
-# Create all locations map
-map <- pft.map(locs)
 
 #-------------------------------------------------------------------------------------
 #################### UI ###############################################################
@@ -366,6 +381,9 @@ ui <- function(request){fluidPage(
   navbarPage(title = "", id = "Navbar", 
              
              tabPanel("Map", 
+                      textInput("string", "Location filter/search:", 
+                                 placeholder = "Search any string to filter locations",
+                                 value = ""),
                       leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
                       br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
@@ -375,10 +393,12 @@ ui <- function(request){fluidPage(
              tabPanel("Data", 
                       # Locations and years panels
                       fluidRow(
-                        column(4,
-                               selectInput("loc", "Location:",
-                                           choices=locs$name,
-                                           selected="")),
+                        column(4, 
+                          selectInput("loc", label = "Location",
+                                      choices=locs$name,
+                                      selected="")
+                        ),
+                               
                         column(2,
                                selectInput("aggr", "Aggregation:",
                                            choices=c("none", "day", "month", "year"),
@@ -461,6 +481,15 @@ server <- shinyServer(function(input, output, session) {
   ### Selection
   ###=============================================================================
   
+  # Locations selection
+  output$firstSelection <- renderUI({
+    # Set select input
+    selectInput("loc",
+                label = NULL,
+                choices=  locs$name,  #"YGS_TakhiniValley",
+                selected=NULL)
+  })
+  
   # Years selection
   output$secondSelection <- renderUI({
     # Get current location obs table
@@ -493,6 +522,9 @@ server <- shinyServer(function(input, output, session) {
   ###=============================================================================
   
   ### REACTIVE OUTPUT FUNCTIONS
+  # Create locations table reactive to string input
+  filteredLoc <- reactive({filter.locs(input$string)})
+  
   # Create current location table reactive to loc input
   currentLoc <- reactive({current.loc(input$loc)})
   
@@ -513,17 +545,21 @@ server <- shinyServer(function(input, output, session) {
   # Re-format currentObs for downloadData and table
   reformatTable <- reactive({pft.tformat(currentObs())})
   
+  # Map so it can be used for the single location map
+  currentMap <- reactive({pft.map(filteredLoc())})
+  
+  
   ### OUTPUTS
   
   # All locations MAP
   output$mymap <- renderLeaflet({
-    map
+    currentMap()
   })
   
   # Single location MAP
   output$locmap <- renderLeaflet({
     cloc <- currentLoc()
-    setView(map, lng=cloc$long, lat=cloc$lat, zoom=15)
+    setView(currentMap(), lng=cloc$long, lat=cloc$lat, zoom=15)
   })
   
   ### Locations download
@@ -568,7 +604,7 @@ server <- shinyServer(function(input, output, session) {
     }
   )
   
-  # Tab show/hide reactive expression
+  ### Tab show/hide reactive expression
   tab_hide <- reactive({
     if (is.na(currentLoc()$start_year)){
       tab <- "hide"
@@ -602,6 +638,7 @@ server <- shinyServer(function(input, output, session) {
     },
     contentType = 'image/png'
   )
+
   # Time series description
   output$dygraph_txt <- renderText({
     paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
