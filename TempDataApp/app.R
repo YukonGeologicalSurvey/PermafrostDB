@@ -531,8 +531,10 @@ server <- shinyServer(function(input, output, session) {
   
   
   # Query observations table with current loc input
-  mainObs <- reactive({pft.query(con=con, #aggr = input$aggr, 
-                                 location = input$loc)})
+  mainObs <- reactive({
+    # check if currentLoc has obs data, if doesn't, it stops
+    req(currentLoc()$start_year) 
+    pft.query(con=con, location = input$loc)})
   
   # Aggregate and subset observations table with current aggr, depths and years input
   currentObs <- reactive({pft.subset(obs=mainObs(), aggr=input$aggr, 
@@ -695,7 +697,7 @@ server <- shinyServer(function(input, output, session) {
     who_id <- unique(mainObs()$who_id)
     who.met(who_id)
   },
-  colnames = FALSE, caption = "Who", 
+  colnames = FALSE, caption = "Who",
   caption.placement = getOption("xtable.caption.placement", "top"),
   )
   
