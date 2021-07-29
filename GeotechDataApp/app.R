@@ -94,6 +94,14 @@ f.meta <- function(loc) {
   return(tab)
 }
 
+########## filter.locs: Reactive function for locs filtered by string ###########
+
+## Filters the locs table to the names with string
+filter.locs <- function(s){
+  flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
+  return(flocs)
+}
+
 #-------------------------------------------------------------------------------------
 #################### START UP #######################################################
 
@@ -116,7 +124,7 @@ names(locs) <- c("name", "elevation", "hole_depth", "start_date", "end_date",
                  "lat", "long", "project_number") 
 
 # Create all locations map
-map <- pft.map(locs)
+#map <- pft.map(locs)
 
 #-------------------------------------------------------------------------------------
 ###################### UI ##################################
@@ -136,6 +144,9 @@ ui <- function(request){fluidPage(
     navbarPage(title = "", id = "Navbar",
                
                tabPanel("Map", 
+                        textInput("string", "Location filter/search:", 
+                                  placeholder = "Search any string to filter locations",
+                                  value = ""),
                         leafletOutput("mymap") %>% 
                           withSpinner(color="#0097A9"),
                         br(),
@@ -202,10 +213,24 @@ server <- function(input, output, session) {
   })
   
   ###=============================================================================
+  ### Selection
+  ###=============================================================================
+  # Locations selection
+  output$firstSelection <- renderUI({
+    # Set select input
+    selectInput("loc",
+                label = NULL,
+                choices=  locs$name,  #"YGS_TakhiniValley",
+                selected=NULL)
+  })
+  
+  ###=============================================================================
   ### Output
   ###=============================================================================
   
   ### Reactive output functions
+  # Create locations table reactive to string input
+  filteredLoc <- reactive({filter.locs(input$string)})
   # Create soil description table
   soil_input <- reactive(f.soil(input$loc))
   # Create permafrost description table
@@ -214,11 +239,14 @@ server <- function(input, output, session) {
   surface_input <- reactive(f.surface(input$loc))
   # Create surface description table
   meta_input <- reactive(f.meta(input$loc))
+  # Map so it can be used for the single location map
+  currentMap <- reactive({pft.map(filteredLoc())})
   
   ### Outputs
   ## All locations map
   output$mymap <- renderLeaflet({
-    map  
+    #map 
+    currentMap()
   })
   
   ## Data download
@@ -264,7 +292,7 @@ server <- function(input, output, session) {
   ## Single location map
   output$locmap <- renderLeaflet({
     cloc <- locs[locs$name==input$loc,]
-    setView(map, lng=cloc$long, lat=cloc$lat, zoom=15)
+    setView(currentMap(), lng=cloc$long, lat=cloc$lat, zoom=15)
   })
   
   ## Soil description
