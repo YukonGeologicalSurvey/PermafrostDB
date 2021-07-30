@@ -188,17 +188,15 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
   # Set col names
   names(obs) <- c("depth", "year", "min", "max", "mean", "count")
   
-  
   years <- NULL
   annot <- NULL
   
   for (i in unique(obs$year)) {
     mn <- min(obs[obs$year==i,]$count)
-    mx <- max(obs[obs$year==i,]$count)
     
     if (mn < 350) {
       anno <- NULL
-      anno <- paste0("Incomplete dataset:\nmin: ", mn, "\n", "max: ", mx)
+      anno <- paste0("Incomplete dataset")
     } else {anno <- NA}
     
     annot <- c(annot, anno)
@@ -231,8 +229,8 @@ pft.plot_trumpetcurve <- function(obs, date_s, date_e) {
     geom_point(aes(x=depth, y=mean), color="grey20", size=2) + 
     
     geom_text(data=annots, aes(
-      x=max(obs$depth) + .75*min(obs$depth), y=mean(obs$max) + 2,
-      hjust=0.4, vjust=0.7,# Add incomplete dataset text
+      x=min(obs$depth), y=max(obs$max),
+      hjust=1, vjust=0.3,# Add incomplete dataset text
       label=annot, col="#F2A900"),
       show.legend=FALSE) +
     facet_wrap(~year) 
