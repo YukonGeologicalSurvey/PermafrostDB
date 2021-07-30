@@ -1,5 +1,5 @@
 #######################################################################################
-#--------------# Trumpet curve and time series plot combinatino app #-----------------#
+#--------------------------# Temperature data Shiny app #-----------------------------#
 #######################################################################################
 
 source("dbconnection.R")
@@ -161,8 +161,9 @@ pft.tformat <- function(table) {
   table <- reshape(table, idvar = 'date', v.names = 'temp', timevar = 'depth', direction = "wide")
   table$date <- as.character(table$date)
   colnames(table) <- gsub(pattern="temp.", replacement="", x=colnames(table))
-  table <- table[, c("date", sort(as.numeric(colnames(table[,-1])), decreasing=TRUE))]
-  colnames(table) <- c("Date", paste(colnames(table[-1]), " m"))
+  table <- table[, c("date", sort(as.numeric(colnames(table)[-1]), decreasing=TRUE))]
+  colnames(table) <- c("Date", paste(colnames(table)[-1], " m"))
+  
   return(table)
 }
 
@@ -395,7 +396,7 @@ ui <- function(request){fluidPage(
                       # Locations and years panels
                       fluidRow(
                         column(4, 
-                          selectInput("loc", label = "Location",
+                          selectInput("loc", label = "Location:",
                                       choices=locs$name,
                                       selected="")
                         ),
