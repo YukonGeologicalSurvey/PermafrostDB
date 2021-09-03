@@ -86,7 +86,7 @@ f.meta <- function(loc) {
                                 "ROCK_DEPTH, GW_TABLE, COMMENTS ",
                                 "FROM PERMAFROST.PF_LOCATIONS ",
                                 "WHERE SITE_ID = '", site_id, "'",
-								"AND PUBLIC_FLAG = 'Y'"))
+								" AND PUBLIC_FLAG = 'Y'"))
   names(tab) <- c("Site id", "Project name", "Location description", "Elevation (m)", "Hole depth (m)",
                   "Start date", "End date", "Consultant", "Client", "Contractor", "Equipment",
                   "Core diameter", "Flush", "Plunge", "Azimuth", "Project engineer", "Hole type",
@@ -120,8 +120,7 @@ library(shinycssloaders)
 # Get locations
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
                    END_DATE, LATITUDE, LONGITUDE, PROJECT_NUMBER
-                   FROM PERMAFROST.PF_LOCATIONS ORDER BY SITE_ID
-				   WHERE PUBLIC_FLAG = 'Y'")
+                   FROM PERMAFROST.PF_LOCATIONS WHERE PUBLIC_FLAG = 'Y' ORDER BY SITE_ID")
 names(locs) <- c("name", "elevation", "hole_depth", "start_date", "end_date",
                  "lat", "long", "project_number") 
 
