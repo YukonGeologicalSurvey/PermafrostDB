@@ -52,6 +52,7 @@ pft.query <- function(con, location) {
                                 "WHO_ID, METHOD_ID ",
                                 "FROM PERMAFROST.PFT_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
+								"AND PUBLIC_FLAG = 'Y'",
                                 "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
@@ -68,6 +69,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
                                   "FROM PERMAFROST.PFT_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
+								  "AND PUBLIC_FLAG = 'Y'",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
     names(obs) <- c("date", "depth", "temp")
@@ -354,6 +356,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
                                " FROM PERMAFROST.PFT_SUMMARY_LOC",
                                #" FROM PERMAFROST.PFT_SUMMARY_LOC2",
+							   " WHERE PUBLIC_FLAG = 'Y'",
                                " ORDER BY NAME ASC"
 ))
 
