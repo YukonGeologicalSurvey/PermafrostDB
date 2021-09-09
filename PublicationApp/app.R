@@ -6,7 +6,7 @@ source('dbconnection.R')
 jscode <- "$('a').attr('target','_blank');"
 
 pfReports <- dbGetQuery(con, "SELECT YEAR, TITLE, AUTHOR, REPORT_TYPE, DESCRIPTION from permafrost.VW_PERMAFROST_REPORTS")
-gtReports <- dbGetQuery(con, "SELECT YEAR, TITLE, REFERENCE_NUM, AUTHOR, REPORT_TYPE, LOCATION from permafrost.VW_GEOTECHNICAL_REPORTS")
+gtReports <- dbGetQuery(con, "SELECT YEAR, TITLE, REFERENCE_NUM, AUTHOR, REPORT_TYPE, HIGHWAY_NAME from permafrost.VW_GEOTECHNICAL_REPORTS")
 
 ui <- fluidPage(
   tags$script(jscode),
