@@ -30,8 +30,8 @@ pft.map <- function(loc) {
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
     addCircleMarkers(lng=loc$long, lat=loc$lat,
                      popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                     color = ~pal(permafrost), opacity=1) %>%
-    leaflet::addLegend("topright", pal = pal, values = ~permafrost)
+                     color = ~pal(Permafrost), opacity=1) %>%
+    leaflet::addLegend("topright", pal = pal, values = ~Permafrost)
   
 }
 
@@ -361,7 +361,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
 ))
 
 names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
-                 "lat", "long", "permafrost")
+                 "lat", "long", "Permafrost")
 
 #-------------------------------------------------------------------------------------
 #################### UI ###############################################################
