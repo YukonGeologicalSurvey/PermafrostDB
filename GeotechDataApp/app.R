@@ -13,13 +13,13 @@ pft.map <- function(loc) {
   
   # Define f.link function
   f.link <- function(tab) {
-    links <- c()
-    for (i in tab$name) {
-      link <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
+    Link <- c()
+    for (i in tab$Name) {
+      url <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
                        "&Navbar=%22Data%22\"> See site data here </a>'"))
-      links <- c(links, link)
+      Link <- c(Link, url)
     }
-    tabl <- cbind(tab, links)
+    tabl <- cbind(tab, Link)
     
     return(tabl)
   }
@@ -27,9 +27,9 @@ pft.map <- function(loc) {
   # Create map
   leaflet(loc) %>%
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-    addCircleMarkers(lng=loc$long, lat=loc$lat, 
+    addCircleMarkers(lng=loc$Longitude, lat=loc$Latitude, 
                      popup=popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                     color = "#0097A9", opacity=1)
+                     color = "#800403", opacity=1)
 }
 
 ########## f.soil ##############################################
@@ -99,7 +99,7 @@ f.meta <- function(loc) {
 
 ## Filters the locs table to the names with string
 filter.locs <- function(s){
-  flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
+  flocs <- locs[grep(s, locs$Name, ignore.case=TRUE),]
   return(flocs)
 }
 
@@ -121,8 +121,8 @@ library(shinycssloaders)
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
                    END_DATE, LATITUDE, LONGITUDE, PROJECT_NUMBER
                    FROM PERMAFROST.PF_LOCATIONS WHERE PUBLIC_FLAG = 'Y' ORDER BY SITE_ID")
-names(locs) <- c("name", "elevation", "hole_depth", "start_date", "end_date",
-                 "lat", "long", "project_number") 
+names(locs) <- c("Name", "Elevation", "Hole depth (m)", "Start date", "End date",
+                 "Latitude", "Longitude", "Project number") 
 
 # Create all locations map
 #map <- pft.map(locs)
@@ -159,7 +159,7 @@ ui <- function(request){fluidPage(
                         # Locations panel
                         fluidRow(
                           column(4, selectizeInput("loc", "Site:",
-                                                choices=locs$name,
+                                                choices=locs$Name,
                                                 selected="", 
                                                 options = list(maxOptions=15000))),
                           column(8, leafletOutput("locmap", height='300') %>% 
@@ -221,7 +221,7 @@ server <- function(input, output, session) {
     # Set select input
     selectInput("loc",
                 label = NULL,
-                choices=  locs$name,  #"YGS_TakhiniValley",
+                choices=  locs$Name,  #"YGS_TakhiniValley",
                 selected=NULL)
   })
   
@@ -260,7 +260,7 @@ server <- function(input, output, session) {
   output$downloadLoc.kml <- downloadHandler(
     filename = paste0("GeotechLocations_", Sys.Date(), ".kml"),
     content = function(file) {
-      xy <- locs[, c("long", "lat")]
+      xy <- locs[, c("Longitude", "Latitude")]
       shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
       plotKML(shp, folder.name = "Geotech locations", file, 
               points.names = shp$SITE_ID)
@@ -274,7 +274,7 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       # Create coords
-      xy <- locs[, c("long", "lat")]
+      xy <- locs[, c("Longitude", "Latitude")]
       # Create spatial object
       shp <- SpatialPointsDataFrame(xy, locs, proj4string = CRS("+proj=longlat +datum=NAD83"))
       # Create temporary folder
@@ -292,8 +292,8 @@ server <- function(input, output, session) {
     
   ## Single location map
   output$locmap <- renderLeaflet({
-    cloc <- locs[locs$name==input$loc,]
-    setView(currentMap(), lng=cloc$long, lat=cloc$lat, zoom=15)
+    cloc <- locs[locs$Name==input$loc,]
+    setView(currentMap(), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
   })
   
   ## Soil description
