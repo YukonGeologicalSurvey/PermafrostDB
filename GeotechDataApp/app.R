@@ -12,23 +12,23 @@ enableBookmarking("url")
 pft.map <- function(loc) {
   
   # Define f.link function
-  f.link <- function(tab) {
-    Link <- c()
-    for (i in tab$Name) {
-      url <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
-                       "&Navbar=%22Data%22\"> See site data here </a>'"))
-      Link <- c(Link, url)
-    }
-    tabl <- cbind(tab, Link)
-    
-    return(tabl)
-  }
+  #f.link <- function(tab) {
+  #  Link <- c()
+  #  for (i in tab$Name) {
+  #    url <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
+  #                     "&Navbar=%22Data%22\"> See site data here </a>'"))
+  #    Link <- c(Link, url)
+  #  }
+  #  tabl <- cbind(tab, Link)
+  #  
+  #  return(tabl)
+  #}
   
   # Create map
   leaflet(loc) %>%
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
     addCircleMarkers(lng=loc$Longitude, lat=loc$Latitude, 
-                     popup=popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
+                     popup=popupTable(loc, row.numbers=FALSE, feature.id=FALSE),
                      color = "#800403", opacity=1)
 }
 
@@ -119,10 +119,10 @@ library(shinycssloaders)
 
 # Get locations
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
-                   END_DATE, LATITUDE, LONGITUDE, PROJECT_NUMBER
-                   FROM PERMAFROST.PF_LOCATIONS WHERE PUBLIC_FLAG = 'Y' ORDER BY SITE_ID")
+                   END_DATE, LATITUDE, LONGITUDE, PROJECT_NUMBER, URL
+                   FROM PERMAFROST.V_PF_LOCATIONS_MAP ORDER BY SITE_ID")
 names(locs) <- c("Name", "Elevation", "Hole depth (m)", "Start date", "End date",
-                 "Latitude", "Longitude", "Project number") 
+                 "Latitude", "Longitude", "Project number", "Link") 
 
 # Create all locations map
 #map <- pft.map(locs)
@@ -419,26 +419,4 @@ server <- function(input, output, session) {
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
 #-------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
