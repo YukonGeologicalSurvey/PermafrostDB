@@ -18,7 +18,7 @@ pft.map <- function(loc) {
                        "&Navbar=%22Data%22\"> See site data here </a>'"))
       links <- c(links, link)
     }
-    locsl <<- cbind(locs, links)
+    locsl <- cbind(locs, links)
     # Change field names
     colnames(locsl) <- c("Name", "Start year", "End year", "Min depth", "Max depth",
                          "Latitude", "Longitude", "Permafrost", "Link")
