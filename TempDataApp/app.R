@@ -9,7 +9,7 @@ source("dbconnection.R")
 ########## pft.map: Leaflet map ##########
 pft.map <- function(loc) {
   
-  # Function to add link to locs
+  # Function to add link to locs and to change field names
   f.link <- function(locs) {
     links <- c()
     for (i in locs$name) {
@@ -18,7 +18,10 @@ pft.map <- function(loc) {
                        "&Navbar=%22Data%22\"> See site data here </a>'"))
       links <- c(links, link)
     }
-    locsl <- cbind(locs, links)
+    locsl <<- cbind(locs, links)
+    # Change field names
+    colnames(locsl) <- c("Name", "Start year", "End year", "Min depth", "Max depth",
+                         "Latitude", "Longitude", "Permafrost", "Link")
     
     return(locsl)
   }
@@ -28,9 +31,11 @@ pft.map <- function(loc) {
   # Create map
   leaflet(loc) %>%
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
-    addCircleMarkers(lng=loc$long, lat=loc$lat,
-                     popup=leafpop::popupTable(f.link(loc), row.numbers=FALSE, feature.id=FALSE),
-                     color = ~pal(Permafrost), opacity=1) %>%
+    addCircleMarkers(lng = loc$long, lat = loc$lat,
+                     popup = leafpop::popupTable(f.link(loc), row.numbers = FALSE, feature.id = FALSE),
+                     color = ~pal(Permafrost), 
+                     opacity = 1, 
+                     fillOpacity = 0.8) %>%
     leaflet::addLegend("topright", pal = pal, values = ~Permafrost)
   
 }
@@ -52,7 +57,7 @@ pft.query <- function(con, location) {
                                 "WHO_ID, METHOD_ID ",
                                 "FROM PERMAFROST.PFT_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
-								"AND PUBLIC_FLAG = 'Y'",
+                                "AND PUBLIC_FLAG = 'Y'",
                                 "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
@@ -69,7 +74,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
                                   "FROM PERMAFROST.PFT_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
-								  "AND PUBLIC_FLAG = 'Y'",
+                                  "AND PUBLIC_FLAG = 'Y'",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
     names(obs) <- c("date", "depth", "temp")
@@ -145,7 +150,6 @@ pft.plot <- function(obs) {
   graph <- graph %>%
     dyLegend(width = 100, labelsSeparateLines = TRUE, labelsDiv = 'legend') %>%
     dyOptions(labelsUTC = TRUE, gridLineWidth = 0.1, 
-              # colors = RColorBrewer::brewer.pal(snamesLen, "RdYlBu"),
               colors = colorRampPalette(c("#DC4405", "#F2A900", "#7A9A01", "#0097A9"))(snamesLen)
               ) %>%
     dyHighlight(highlightSeriesOpts = list(strokeWidth = 2)) %>%
@@ -169,10 +173,10 @@ pft.tformat <- function(table) {
   return(table)
 }
 
-########## pft.plot_trumpetcurve: Trumpet curve plotting function ##################################
+########## pft.plot_groundtempenv: Ground temperature envelope plotting function ##################################
 
-## Plot trumpet curve for all years between date_s and date_e 
-pft.plot_trumpetcurve <- function(obs, date_s, date_e) { 
+## Plot ground temperature envelope for all years between date_s and date_e 
+pft.plot_groundtempenv <- function(obs, date_s, date_e) { 
   
   # Subset dataframe
   obs <- obs[obs$date >= as.Date(date_s) & obs$date <= as.Date(date_e) & obs$depth <= 0,]
@@ -356,7 +360,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " LATITUDE, LONGITUDE, PERMAFROST",
                                " FROM PERMAFROST.PFT_SUMMARY_LOC",
                                #" FROM PERMAFROST.PFT_SUMMARY_LOC2",
-							   " WHERE PUBLIC_FLAG = 'Y'",
+                               " WHERE PUBLIC_FLAG = 'Y'",
                                " ORDER BY NAME ASC"
 ))
 
@@ -416,8 +420,8 @@ ui <- function(request){fluidPage(
                       tabsetPanel(id = "temp_tabs", type = 'tabs',
                                   
                                   tabPanel("Time series", 
-                                           br(),
-                                           downloadButton("downloadPlot", "Download plot"),
+                                           #br(),
+                                           #downloadButton("downloadPlot", "Download plot"),
                                            br(),
                                            fluidRow(
                                              column(10, dygraphOutput("dygraph", width = "95%") %>% 
@@ -434,16 +438,16 @@ ui <- function(request){fluidPage(
                                                                width = "95%",
                                                                height = "100%") %>% 
                                              withSpinner(color="#0097A9")),
-                                  tabPanel("Trumpet curves", 
+                                  tabPanel("Ground temperature envelope", 
                                            br(),
-                                           downloadButton("downloadTrumpet", "Download plot"),
-                                           plotOutput("TrumpetCurves",
+                                           downloadButton("downloadGroundtempenv", "Download plot"),
+                                           plotOutput("GroundTempEnvs",
                                                       width = "850px",
                                                       height = "600px") %>% 
                                              withSpinner(color="#0097A9"),
                                            br(),
-                                           textOutput("trumpetCurves_txt"),
-                                           tags$head(tags$style("#trumpetCurves_txt{color:grey;
+                                           textOutput("groundTempEnv,_txt"),
+                                           tags$head(tags$style("#groundTempEnv_txt{color:grey;
                                                                                          font-size: 12px}"))
                                   ),       
                                   
@@ -621,11 +625,11 @@ server <- shinyServer(function(input, output, session) {
     if (tab_hide()=="show") {
       showTab("temp_tabs", "Time series")
       showTab("temp_tabs", "Table")
-      showTab("temp_tabs", "Trumpet curves")
+      showTab("temp_tabs", "Ground temperature envelope")
     } else if (tab_hide()=="hide") {
       hideTab("temp_tabs", "Time series")
       hideTab("temp_tabs", "Table")
-      hideTab("temp_tabs", "Trumpet curves")
+      hideTab("temp_tabs", "Ground temperature envelope")
     }
   })
   
@@ -634,15 +638,15 @@ server <- shinyServer(function(input, output, session) {
     dyplot()
   })
   
-  # Time series download
-  output$downloadPlot <- downloadHandler(
-    filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
-    content = function(file) {
-      saveWidget(dyplot(), "temp.html", selfcontained = FALSE)
-      webshot("temp.html", file = file)
-    },
-    contentType = 'image/png'
-  )
+  # # Time series download
+  # output$downloadPlot <- downloadHandler(
+  #   filename = function() {paste0("TimeSeries_", currentLoc()$name, ".png")},
+  #   content = function(file) {
+  #     saveWidget(dyplot(), "temp.html", selfcontained = FALSE)
+  #     webshot("temp.html", file = file)
+  #   },
+  #   contentType = 'image/png'
+  # )
 
   # Time series description
   output$dygraph_txt <- renderText({
@@ -663,22 +667,22 @@ server <- shinyServer(function(input, output, session) {
       write.csv(obs, file, row.names=FALSE)
     })
   
-  ### Trumpet curves
-  output$TrumpetCurves <- renderPlot({
-    pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
+  ### Ground temperature envelopes
+  output$GroundTempEnvs <- renderPlot({
+    pft.plot_groundtempenv(mainObs(), paste0(input$years[1], "-01-01"),
                           paste0(input$years[2], "-12-31"))
   })
-  # Trumpet curves description
-  output$trumpetCurves_txt <- renderText({
-    paste0("A trumpet curve displays annual permafrost thermal regimes. ",
+  # Ground temperature envelopes description
+  output$groundTempEnvs_txt <- renderText({
+    paste0("A ground temperature envelope displays annual permafrost thermal regimes. ",
            "The red, blue and black lines represent maximum, minimum and mean ",
            "annual temperatures, respectively")
   })
-  # Trumpet curve download
-  output$downloadTrumpet <- downloadHandler(
-    filename = function() {paste0("TrumpetCurve_", currentLoc()$name, ".png")},
+  # Ground temperature envelope download
+  output$downloadGroundtempenv <- downloadHandler(
+    filename = function() {paste0("GroundTempEnvelope_", currentLoc()$name, ".png")},
     content = function(file) {
-      ggsave(file, plot = pft.plot_trumpetcurve(mainObs(), paste0(input$years[1], "-01-01"),
+      ggsave(file, plot = pft.plot_groundtempenv(mainObs(), paste0(input$years[1], "-01-01"),
                                                 paste0(input$years[2], "-12-31")),
              device = "png")
     }
