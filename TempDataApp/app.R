@@ -25,7 +25,6 @@ pft.map <- function(loc) {
     
     return(locsl)
   }
-  
   # Set up icon colours
   pal <- colorFactor(c("#DC4405", "grey40", "#512A44", "#0097A9"), domain = c("No", "Undetermined", "Yes", "Weather station"))
   # Create map
@@ -33,6 +32,7 @@ pft.map <- function(loc) {
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
     addCircleMarkers(lng = loc$long, lat = loc$lat,
                      popup = leafpop::popupTable(f.link(loc), row.numbers = FALSE, feature.id = FALSE),
+                     label = loc$name,
                      color = ~pal(Permafrost), 
                      opacity = 1, 
                      fillOpacity = 0.8) %>%
