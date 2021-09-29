@@ -36,13 +36,14 @@ f.soil <- function(loc) {
 ########## f.permafrost ##############################################
 f.permafrost <- function(loc) {
   site_id <- loc
-  tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, TEMPERATURE, SURFACE_THAW, ",
-                                "PERMAFROST_DESC, ICE_CODE, CLASS, PERCENT_ICE, COMMENTS ",
-                                "FROM PERMAFROST.PF_PERMAFROST_DESC ",
+  tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.TEMPERATURE, D.SURFACE_THAW, ",
+                                "D.PERMAFROST_DESC, D.ICE_CODE, I.DESCRIPTION AS ICE_DESCRIPTION, D.CLASS, D.PERCENT_ICE, D.COMMENTS ",
+                                "FROM PERMAFROST.PF_PERMAFROST_DESC D ",
+								"LEFT JOIN PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.ICE_CODE) ",
                                 "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Temperature (\u00B0C)", "Surface thaw",
-                  "Permafrost description", "Ice code", "Class", "Percent ice", "Comments")
+                  "Permafrost description", "Ice code", "Ice code description", "Class", "Percent ice", "Comments")
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
 }
