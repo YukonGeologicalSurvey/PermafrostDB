@@ -10,27 +10,12 @@ enableBookmarking("url")
 
 ########## pft.map: Create map of all locations ###########
 pft.map <- function(loc) {
-  
-  # Define f.link function
-  # f.link <- function(tab) {
-  #   
-  #   linking <- function(i){
-  #     link <- c(paste0("'<a href = \"?_inputs_&loc=%22", i, "%22&loc-selectized=%22%22",
-  #                      "&Navbar=%22Data%22\"> See site data here </a>'"))
-  #     return(link)
-  #   }
-  #   links <- sapply(tab$name, linking)
-  #   
-  #   tabl <- cbind(tab, links)
-  #   
-  #   return(tabl)
-  # }
-  
   # Create map
   leaflet(loc) %>%
     addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
     addCircleMarkers(lng=loc$Longitude, lat=loc$Latitude, 
                      popup=popupTable(loc, row.numbers=FALSE, feature.id=FALSE),
+                     label = loc$Name,
                      color = "#800403", opacity=1)
 }
 
@@ -101,7 +86,7 @@ f.meta <- function(loc) {
 
 ## Filters the locs table to the names with string
 filter.locs <- function(s){
-  flocs <- locs[grep(s, locs$Name, ignore.case=TRUE),]
+    flocs <- locs[grep(s, locs$Name, ignore.case=TRUE),]
   return(flocs)
 }
 
@@ -248,12 +233,11 @@ server <- function(input, output, session) {
     currentMap()
   })
   
-  
   ## Single location map
-  output$locmap <- renderLeaflet({
-    cloc <- locs[locs$Name==input$loc,]
-    setView(currentMap(), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
-  })
+   output$locmap <- renderLeaflet({
+     cloc <- locs[locs$Name==input$loc,]
+     setView(pft.map(cloc), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
+   })
   
   ## Soil description
   output$soil <- renderUI({
