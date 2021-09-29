@@ -39,7 +39,7 @@ f.permafrost <- function(loc) {
   tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.TEMPERATURE, D.SURFACE_THAW, ",
                                 "D.PERMAFROST_DESC, D.ICE_CODE, I.DESCRIPTION AS ICE_DESCRIPTION, D.CLASS, D.PERCENT_ICE, D.COMMENTS ",
                                 "FROM PERMAFROST.PF_PERMAFROST_DESC D ",
-								"LEFT JOIN PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.ICE_CODE) ",
+								"LEFT JOIN PERMAFROST.PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.CODE) ",
                                 "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Temperature (\u00B0C)", "Surface thaw",
