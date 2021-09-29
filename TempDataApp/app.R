@@ -19,6 +19,9 @@ pft.map <- function(loc) {
       links <- c(links, link)
     }
     locsl <- cbind(locs, links)
+    # to make method and who faster
+      # # remove who_id and method_id
+      # locsl <- locsl[,!(names(locsl) %in% c("who_id","method_id"))]
     # Change field names
     colnames(locsl) <- c("Name", "Start year", "End year", "Min depth", "Max depth",
                          "Latitude", "Longitude", "Permafrost", "Link")
@@ -45,16 +48,9 @@ pft.map <- function(loc) {
 
 ## Query daily average data from PFT_SUMMARY in database 
 pft.query <- function(con, location) { 
-  # obs <- dbGetQuery(con, paste0("SELECT LOCATION_ID, ",
-  #                               "TIME_START, MONTH, YEAR(TIME_START) AS YEAR, ", 
-  #                               "DEPTH_MIN, NUMERICAL_VALUE, ",
-  #                               "WHO_ID, METHOD_ID ",
-  #                               "FROM PERMAFROST.PFT_OBSERVATIONS ",
-  #                               "WHERE NAME = '", location, "' ",
-  #                               "ORDER BY TIME_START, DEPTH_MIN DESC" ))
   
-  obs <- dbGetQuery(con, paste0("SELECT NAME, TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP, ",
-                                "WHO_ID, METHOD_ID ",
+  obs <- dbGetQuery(con, paste0("SELECT NAME, TEMPDATE, MONTH, YEAR, DEPTH, DAILYTEMP ",#,
+                                #"WHO_ID ",# METHOD_ID ",
                                 "FROM PERMAFROST.PFT_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
                                 "AND PUBLIC_FLAG = 'Y'",
@@ -62,7 +58,7 @@ pft.query <- function(con, location) {
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
   obs$MONTH <- as.Date(obs$MONTH)
   #obs$YEAR <- as.Date(obs$YEAR)
-  names(obs) <- c("name", "date", "month", "year", "depth", "temp", "who_id", "method_id")
+  names(obs) <- c("name", "date", "month", "year", "depth", "temp")#, "who_id", "method_id")
   return(obs)
 }
 
@@ -251,6 +247,8 @@ pft.plot_groundtempenv <- function(obs, date_s, date_e) {
 ## Filters the locs table to the names with string
 filter.locs <- function(s){
     flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
+    # to make method and who faster
+      # flocs <- flocs[,!(names(flocs) %in% c("who_id", "method_id"))]
   return(flocs)
 }
 
@@ -259,6 +257,8 @@ filter.locs <- function(s){
 ## Subsets the locs table to a single location
 current.loc <- function(n){
   cloc <- locs[locs$name==n,]
+  # to make method and who faster
+    # cloc <- cloc[,!(names(cloc) %in% c("who_id", "method_id"))]
   return(cloc)
 }
 
@@ -353,19 +353,21 @@ enableBookmarking("url")
 
 # Get locations
 locs <- dbGetQuery(con, paste0("SELECT NAME,",
-                               #" EXTRACT(year FROM START_DATE),", 
-                               #" EXTRACT(year FROM END_DATE),", 
                                " START_DATE, END_DATE,",
                                " MIN_DEPTH, MAX_DEPTH,",
-                               " LATITUDE, LONGITUDE, PERMAFROST",
+                               " LATITUDE, LONGITUDE, PERMAFROST",#,
+                               #" WHO_ID, METHOD_ID", #only exists in dev view, added to try and make method and who faster
                                " FROM PERMAFROST.PFT_SUMMARY_LOC",
-                               #" FROM PERMAFROST.PFT_SUMMARY_LOC2",
                                " WHERE PUBLIC_FLAG = 'Y'",
                                " ORDER BY NAME ASC"
 ))
 
 names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
-                 "lat", "long", "Permafrost")
+                 "lat", "long", "Permafrost")#, "who_id", "method_id")
+# to make method and who faster
+  # locs <- locs[,!(names(locs) %in% c("who_id", "method_id"))]
+  # locs <- unique(locs)
+  # locs2 <- locs
 
 #-------------------------------------------------------------------------------------
 #################### UI ###############################################################
@@ -455,10 +457,10 @@ ui <- function(request){fluidPage(
                                              withSpinner(color="#0097A9")),
                                   tabPanel("Metadata", 
                                            fluidRow(
-                                             column(4, tableOutput("location_met")),
-                                             column(4, tableOutput("who_met") %>% 
-                                                      withSpinner(color="#0097A9")),
-                                             column(4, tableOutput("method_met"))
+                                             column(6, tableOutput("location_met")),
+                                             column(6, tableOutput("who_met") %>% 
+                                                      withSpinner(color="#0097A9"))#,
+                                             #column(4, tableOutput("method_met"))
                                            )
                                   )
                       )
@@ -700,7 +702,11 @@ server <- shinyServer(function(input, output, session) {
   
   # Who metadata
   output$who_met <- renderTable({
-    who_id <- unique(mainObs()$who_id)
+    who_id <- dbGetQuery(con, paste0("SELECT DISTINCT WHO_ID ",
+                                        "FROM PERMAFROST.PFT_SUMMARY ",
+                                        "WHERE NAME = '", input$loc, "'"))
+    who_id <- who_id[[1]]
+    #who_id <- unique(mainObs()$who_id)
     who.met(who_id)
   },
   colnames = FALSE, caption = "Who",
@@ -709,7 +715,11 @@ server <- shinyServer(function(input, output, session) {
   
   # Method metadata
   output$method_met <- renderTable({
-    method_id <- unique(mainObs()$method_id)
+    method_id <- dbGetQuery(con, paste0("SELECT DISTINCT METHOD_ID ",
+                           "FROM PERMAFROST.PFT_SUMMARY ",
+                           "WHERE NAME = '", input$loc, "'")) 
+    method_id <- method_id[[1]]
+    #method_id <- unique(mainObs()$method_id)
     method.met(method_id)
   },
   colnames = FALSE, caption = "Method", 
