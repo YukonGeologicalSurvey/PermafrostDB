@@ -22,13 +22,14 @@ pft.map <- function(loc) {
 ########## f.soil ##############################################
 f.soil <- function(loc) {
   site_id <- loc
-  tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, BOUNDARY, SOIL_DESC, ",
-                                "CLASS, USC_CODE, COMMENTS ",
-                                "FROM PERMAFROST.PF_SOIL_DESC ",
-                                "WHERE SITE_ID = '", site_id, "' ",
+  tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.BOUNDARY, D.SOIL_DESC, ",
+                                "D.CLASS, D.USC_CODE, U.MATERIAL_TYPE, D.COMMENTS ",
+                                "FROM PERMAFROST.PF_SOIL_DESC D ",
+                                "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(D.USC_CODE) = UPPER(U.CODE) ",
+                                "WHERE D.SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Boundary", "Soil description", "Class",
-                  "USC code", "Comments")
+                  "USC code", "USC code description", "Comments")
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
 }
@@ -40,7 +41,7 @@ f.permafrost <- function(loc) {
                                 "D.PERMAFROST_DESC, D.ICE_CODE, I.DESCRIPTION AS ICE_DESCRIPTION, D.CLASS, D.PERCENT_ICE, D.COMMENTS ",
                                 "FROM PERMAFROST.PF_PERMAFROST_DESC D ",
 								"LEFT JOIN PERMAFROST.PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.CODE) ",
-                                "WHERE SITE_ID = '", site_id, "' ",
+                                "WHERE D.SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Temperature (\u00B0C)", "Surface thaw",
                   "Permafrost description", "Ice code", "Ice code description", "Class", "Percent ice", "Comments")
@@ -301,13 +302,14 @@ server <- function(input, output, session) {
   # Sample
   output$sample <- renderTable({
     site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, CORE_DIA, ",
-                                  "TYPE, USC_CODE, COMMENTS ",
-                                  "FROM PERMAFROST.PF_SAMPLE ",
+    tab <- dbGetQuery(con, paste0("SELECT S.SAMPLE_NUMBER, S.TOP_DEPTH, S.BOT_DEPTH, S.CORE_DIA, ",
+                                  "S.TYPE, S.USC_CODE, U.MATERIAL_TYPE, S.COMMENTS ",
+                                  "FROM PERMAFROST.PF_SAMPLE S ",
+                                  "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(S.USC_CODE) = UPPER(U.CODE) ",
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY TOP_DEPTH"))
     names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Core diameter",
-                    "Type", "USC code", "Comments")
+                    "Type", "USC code", "Material type", "Comments")
     tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   }, caption = "Sample", caption.placement = getOption("xtable.caption.placement", "top"),)
   
