@@ -331,7 +331,7 @@ server <- function(input, output, session) {
   # Geotech testing
   output$geotech_testing <- renderTable({
     site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BULK_DENSITY, DRY_DENSITY, N_VALUE, ",
+    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BULK_DENSITY, DRY_DENSITY, ",
                                   "GS, MOISTURE, LL, PL, PI, GRAVEL, SAND, FINES, SILT, ",
                                   "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, ",
                                   "COMMENTS ",
@@ -339,7 +339,7 @@ server <- function(input, output, session) {
                                   "WHERE SITE_ID = '", site_id, "' ",
                                   "ORDER BY TOP_DEPTH"))
     names(tab) <- c("Sample number", "Top depth (m)", "Bulk density(kg/m)",
-                    "Dry density(kg/m)", "N value", "Specific gravity", "Moisture content (%)",
+                    "Dry density(kg/m)", "Specific gravity", "Moisture content (%)",
                     "Liquid limit", "Plastic limit", "Plasticity index", "Gravel (%)", "Sand (%)",
                     "Fines (%)", "Silt (%)", "Clay (%)", "D50 (mm)", "Organics (%)", "Soluble sulphates (%)",
                     "Salinity (%)", "Comments")
