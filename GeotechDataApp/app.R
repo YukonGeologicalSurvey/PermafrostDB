@@ -40,7 +40,7 @@ f.permafrost <- function(loc) {
   tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.TEMPERATURE, D.SURFACE_THAW, ",
                                 "D.PERMAFROST_DESC, D.ICE_CODE, I.DESCRIPTION AS ICE_DESCRIPTION, D.CLASS, D.PERCENT_ICE, D.COMMENTS ",
                                 "FROM PERMAFROST.PF_PERMAFROST_DESC D ",
-								"LEFT JOIN PERMAFROST.PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.CODE) ",
+                                "LEFT JOIN PERMAFROST.PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.CODE) ",
                                 "WHERE D.SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Temperature (\u00B0C)", "Surface thaw",
@@ -84,11 +84,76 @@ f.meta <- function(loc) {
   return(tab)
 }
 
+########## f.sample ##############################################
+f.sample <- function(loc) {
+  site_id <- loc
+  tab <- dbGetQuery(con, paste0("SELECT S.SAMPLE_NUMBER, S.TOP_DEPTH, S.BOT_DEPTH, S.CORE_DIA, ",
+                                "S.TYPE, S.USC_CODE, U.MATERIAL_TYPE, S.COMMENTS ",
+                                "FROM PERMAFROST.PF_SAMPLE S ",
+                                "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(S.USC_CODE) = UPPER(U.CODE) ",
+                                "WHERE SITE_ID = '", site_id, "' ",
+                                "ORDER BY TOP_DEPTH"))
+  names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Core diameter",
+                  "Type", "USC code", "Material type", "Comments")
+  tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+  return(tab)
+}
+
+########## f.permafrosttesting ##############################################
+f.permafrosttesting <- function(loc) {
+  site_id <- loc
+  tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, THAW_WEAKEN, ",
+                                "THAW_STRAIN, UNFROZEN_WATER, CREEP, ADFREEZE, THERMAL_COND, ",
+                                "LATENT_HEAT_FUSION, COMMENTS ",
+                                "FROM PERMAFROST.PF_PERMAFROST_TESTING ",
+                                "WHERE SITE_ID = '", site_id, "' ",
+                                "ORDER BY TOP_DEPTH"))
+  names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Thaw weakening susceptibility",
+                  "Thaw strain consolidation", "Unfrozen water content", "Creep properties",
+                  "Adfreeze strength", "Thermal conductivity", "Latent heat of fusion", "Comments")
+  tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+  return(tab)
+}
+
+########## f.geotechtesting ##############################################
+f.geotechtesting <- function(loc) {
+  site_id <- loc
+  tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BULK_DENSITY, DRY_DENSITY, ",
+                                "GS, MOISTURE, LL, PL, PI, GRAVEL, SAND, FINES, SILT, ",
+                                "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, ",
+                                "COMMENTS ",
+                                "FROM PERMAFROST.PF_GEOTECH_TESTING ",
+                                "WHERE SITE_ID = '", site_id, "' ",
+                                "ORDER BY TOP_DEPTH"))
+  names(tab) <- c("Sample number", "Top depth (m)", "Bulk density(kg/m)",
+                  "Dry density(kg/m)", "Specific gravity", "Moisture content (%)",
+                  "Liquid limit", "Plastic limit", "Plasticity index", "Gravel (%)", "Sand (%)",
+                  "Fines (%)", "Silt (%)", "Clay (%)", "D50 (mm)", "Organics (%)", "Soluble sulphates (%)",
+                  "Salinity (%)", "Comments")
+  tab <- tab[,colSums(is.na(tab))<nrow(tab)] 
+  return(tab)
+}
+
+########## f.envirotesting ##############################################
+f.envirotesting <- function(loc) {
+  site_id <- loc
+  tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, HYDROCARBON, ",
+                                "LEL, PID, ELECTRICAL_CONDUCTIVITY, CHLORIDE, METHANE, COMMENTS ",
+                                "FROM PERMAFROST.PF_ENVIRONMENTAL ",
+                                "WHERE SITE_ID = '", site_id, "' ",
+                                "ORDER BY TOP_DEPTH"))
+  names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Hydrocarbon vapour (ppm)",
+                  "Lower explosive limit (%)", "PID (%)", "Electrical conductivity (dS/m)",
+                  "Chloride content (mg/L)", "Methane content", "Comments")
+  tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+  return(tab)
+}
+
 ########## filter.locs: Reactive function for locs filtered by string ###########
 
 ## Filters the locs table to the names with string
 filter.locs <- function(s){
-    flocs <- locs[grep(s, locs$Name, ignore.case=TRUE),]
+  flocs <- locs[grep(s, locs$Name, ignore.case=TRUE),]
   return(flocs)
 }
 
@@ -118,7 +183,7 @@ names(locs) <- c("Name", "Elevation", "Hole depth (m)", "Start date", "End date"
 
 #-------------------------------------------------------------------------------------
 ###################### UI ##################################
-# Define UI for application that draws a histogram
+
 ui <- function(request){fluidPage(
   
   tags$style(HTML(" 
@@ -158,21 +223,23 @@ ui <- function(request){fluidPage(
                                              withSpinner(color="#0097A9")),
                                   tabPanel("Permafrost description",
                                            uiOutput("permafrost")),
-                                  # tabPanel("Surface description",
-                                  #          uiOutput("surface")),
+                                           #DT::dataTableOutput("permafrost")),
                                   tabPanel("Samples",
                                            fluidPage(
-                                             fluidRow(
-                                               column(12, tableOutput("sample"))
+                                             fluidRow(column(12, textOutput("samplestxt"))
+                                             ),
+                                             fluidRow(column(12, tableOutput("sample"))
                                              ),
                                              fluidRow(column(12, tableOutput("permafrost_testing"))
                                              ),
                                              fluidRow(column(12, tableOutput("geotech_testing"))
                                              ),
                                              fluidRow(column(12, tableOutput("enviro_testing")))
-                                           )),
+                                           )
+                                           ),
                                   tabPanel("Metadata",
-                                           uiOutput("meta"))#,
+                                           fluidPage(uiOutput("meta")))
+                                           #,
                                   # tabPanel("Install",
                                   #          fluidRow(
                                   #            column(6, tableOutput("install_desc")),
@@ -186,7 +253,7 @@ ui <- function(request){fluidPage(
 
 #-------------------------------------------------------------------------------------
 #################### Server ####################################
-# Define server logic required to draw a histogram
+
 server <- function(input, output, session) {
   
   # Update browsers location bar every time an input changes
@@ -225,6 +292,18 @@ server <- function(input, output, session) {
   surface_input <- reactive(f.surface(input$loc))
   # Create surface description table
   meta_input <- reactive(f.meta(input$loc))
+  
+  # Samples tab
+  # Create samples table
+  sample_input <- reactive(f.sample(input$loc))
+  # Create geotech testing table
+  geotechtesting_input <- reactive(f.geotechtesting(input$loc))
+  # Create permafrost testing table
+  permafrosttesting_input <- reactive(f.permafrosttesting(input$loc))
+  # Create enviro testing table
+  envirotesting_input <- reactive(f.envirotesting(input$loc))
+  
+  
   # Map so it can be used for the single location map
   currentMap <- reactive({pft.map(filteredLoc())})
   
@@ -236,10 +315,10 @@ server <- function(input, output, session) {
   })
   
   ## Single location map
-   output$locmap <- renderLeaflet({
-     cloc <- locs[locs$Name==input$loc,]
-     setView(pft.map(cloc), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
-   })
+  output$locmap <- renderLeaflet({
+    cloc <- locs[locs$Name==input$loc,]
+    setView(pft.map(cloc), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
+  })
   
   ## Soil description
   output$soil <- renderUI({
@@ -265,18 +344,24 @@ server <- function(input, output, session) {
     }
   }) 
   
-  ## Permafrost description
+  # Permafrost description
   output$permafrost <- renderUI({
-    #if(nrow(permafrost_input())==0) {
-    #   hideTab('tabs', "Permafrost description")
-    # return("No data available")
-    #}
-    #else { 
-    tableOutput("permafrost_desc") #}
+    tableOutput("permafrost_desc")
+    #DT::dataTableOutput("permafrost_desc")
   })
   output$permafrost_desc <- renderTable({
     permafrost_input()
   })
+  # output$permafrost_desc <- renderDataTable({
+  #   datatable(permafrost_input(), selection = list(target = 'column'))
+  # })
+  observeEvent(input$permafrost_desc_columns_selected,
+               {
+                 showModal(modalDialog(
+                   title = "Ground ice descriptions",
+                   paste0("test")
+                 ))
+               })
   
   ## Surface description
   output$surface <- renderUI({
@@ -290,7 +375,7 @@ server <- function(input, output, session) {
   
   ## Metadata
   output$meta <- renderUI({
-    if(nrow(meta_input())==0)
+    if(length(meta_input())==0)
       return("No data available")
     tableOutput("metadata")
   })
@@ -299,83 +384,40 @@ server <- function(input, output, session) {
   })
   
   ## Samples
-  # Sample
+  output$samplestxt <- renderText({
+    l <- length(which(
+      c(nrow(sample_input()), nrow(permafrosttesting_input()), 
+                        nrow(geotechtesting_input()), nrow(envirotesting_input())
+        ) ==0))
+    if (l==4)
+      return("No data available")
+    if(l<=2)
+      return("Scroll down for additional tables")
+    if(l==3)
+      return("")
+  })
+
   output$sample <- renderTable({
-    site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT S.SAMPLE_NUMBER, S.TOP_DEPTH, S.BOT_DEPTH, S.CORE_DIA, ",
-                                  "S.TYPE, S.USC_CODE, U.MATERIAL_TYPE, S.COMMENTS ",
-                                  "FROM PERMAFROST.PF_SAMPLE S ",
-                                  "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(S.USC_CODE) = UPPER(U.CODE) ",
-                                  "WHERE SITE_ID = '", site_id, "' ",
-                                  "ORDER BY TOP_DEPTH"))
-    names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Core diameter",
-                    "Type", "USC code", "Material type", "Comments")
-    tab <- tab[,colSums(is.na(tab))<nrow(tab)]
-  }, caption = "Sample", caption.placement = getOption("xtable.caption.placement", "top"),)
-  
+    sample_input()
+    }, caption = "Sample", caption.placement = getOption("xtable.caption.placement", "top"),)
+
   # Permafrost testing
   output$permafrost_testing <- renderTable({
-    site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, THAW_WEAKEN, ",
-                                  "THAW_STRAIN, UNFROZEN_WATER, CREEP, ADFREEZE, THERMAL_COND, ",
-                                  "LATENT_HEAT_FUSION, COMMENTS ",
-                                  "FROM PERMAFROST.PF_PERMAFROST_TESTING ",
-                                  "WHERE SITE_ID = '", site_id, "' ",
-                                  "ORDER BY TOP_DEPTH"))
-    names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Thaw weakening susceptibility",
-                    "Thaw strain consolidation", "Unfrozen water content", "Creep properties",
-                    "Adfreeze strength", "Thermal conductivity", "Latent heat of fusion", "Comments")
-    tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+    permafrosttesting_input()
   }, caption = "Permafrost testing", caption.placement = getOption("xtable.caption.placement", "top"),)
-  
+
   # Geotech testing
   output$geotech_testing <- renderTable({
-    site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BULK_DENSITY, DRY_DENSITY, ",
-                                  "GS, MOISTURE, LL, PL, PI, GRAVEL, SAND, FINES, SILT, ",
-                                  "CLAY, D50, ORGANICS, SOLUABLE_SULPH, SALINITY, ",
-                                  "COMMENTS ",
-                                  "FROM PERMAFROST.PF_GEOTECH_TESTING ",
-                                  "WHERE SITE_ID = '", site_id, "' ",
-                                  "ORDER BY TOP_DEPTH"))
-    names(tab) <- c("Sample number", "Top depth (m)", "Bulk density(kg/m)",
-                    "Dry density(kg/m)", "Specific gravity", "Moisture content (%)",
-                    "Liquid limit", "Plastic limit", "Plasticity index", "Gravel (%)", "Sand (%)",
-                    "Fines (%)", "Silt (%)", "Clay (%)", "D50 (mm)", "Organics (%)", "Soluble sulphates (%)",
-                    "Salinity (%)", "Comments")
-    tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+    geotechtesting_input()
   }, caption = "Geotech testing", caption.placement = getOption("xtable.caption.placement", "top"),)
-  
+
   # Environmental testing
   output$enviro_testing <- renderTable({
-    site_id <- input$loc
-    tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, HYDROCARBON, ",
-                                  "LEL, PID, ELECTRICAL_CONDUCTIVITY, CHLORIDE, METHANE, COMMENTS ",
-                                  "FROM PERMAFROST.PF_ENVIRONMENTAL ",
-                                  "WHERE SITE_ID = '", site_id, "' ",
-                                  "ORDER BY TOP_DEPTH"))
-    names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Hydrocarbon vapour (ppm)",
-                    "Lower explosive limit (%)", "PID (%)", "Electrical conductivity (dS/m)",
-                    "Chloride content (mg/L)", "Methane content", "Comments")
-    tab <- tab[,colSums(is.na(tab))<nrow(tab)]
+    envirotesting_input()
   }, caption = "Environmental", caption.placement = getOption("xtable.caption.placement", "top"),)
-  
+
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
 #-------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
