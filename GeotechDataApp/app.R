@@ -22,14 +22,13 @@ pft.map <- function(loc) {
 ########## f.soil ##############################################
 f.soil <- function(loc) {
   site_id <- loc
-  tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.BOUNDARY, D.SOIL_DESC, ",
-                                "D.CLASS, D.USC_CODE, U.MATERIAL_TYPE, D.COMMENTS ",
-                                "FROM PERMAFROST.PF_SOIL_DESC D ",
-                                "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(D.USC_CODE) = UPPER(U.CODE) ",
-                                "WHERE D.SITE_ID = '", site_id, "' ",
+  tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, BOUNDARY, SOIL_DESC, ",
+                                "CLASS, USC_CODE, COMMENTS ",
+                                "FROM PERMAFROST.PF_SOIL_DESC ",
+                                "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Boundary", "Soil description", "Class",
-                  "USC code", "USC code description", "Comments")
+                  "USC code", "Comments")
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
 }
@@ -37,14 +36,13 @@ f.soil <- function(loc) {
 ########## f.permafrost ##############################################
 f.permafrost <- function(loc) {
   site_id <- loc
-  tab <- dbGetQuery(con, paste0("SELECT D.TOP_DEPTH, D.BOT_DEPTH, D.TEMPERATURE, D.SURFACE_THAW, ",
-                                "D.PERMAFROST_DESC, D.ICE_CODE, I.DESCRIPTION AS ICE_DESCRIPTION, D.CLASS, D.PERCENT_ICE, D.COMMENTS ",
-                                "FROM PERMAFROST.PF_PERMAFROST_DESC D ",
-                                "LEFT JOIN PERMAFROST.PF_GR_ICE_DESC I ON UPPER(D.ICE_CODE) = UPPER(I.CODE) ",
-                                "WHERE D.SITE_ID = '", site_id, "' ",
+  tab <- dbGetQuery(con, paste0("SELECT TOP_DEPTH, BOT_DEPTH, TEMPERATURE, SURFACE_THAW, ",
+                                "PERMAFROST_DESC, ICE_CODE, CLASS, PERCENT_ICE, COMMENTS ",
+                                "FROM PERMAFROST.PF_PERMAFROST_DESC ",
+                                "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Top depth (m)", "Bottom depth (m)", "Temperature (\u00B0C)", "Surface thaw",
-                  "Permafrost description", "Ice code", "Ice code description", "Class", "Percent ice", "Comments")
+                  "Permafrost description", "Ice code", "Class", "Percent ice", "Comments")
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
 }
@@ -87,14 +85,13 @@ f.meta <- function(loc) {
 ########## f.sample ##############################################
 f.sample <- function(loc) {
   site_id <- loc
-  tab <- dbGetQuery(con, paste0("SELECT S.SAMPLE_NUMBER, S.TOP_DEPTH, S.BOT_DEPTH, S.CORE_DIA, ",
-                                "S.TYPE, S.USC_CODE, U.MATERIAL_TYPE, S.COMMENTS ",
-                                "FROM PERMAFROST.PF_SAMPLE S ",
-                                "LEFT JOIN PERMAFROST.PF_USC U ON UPPER(S.USC_CODE) = UPPER(U.CODE) ",
+  tab <- dbGetQuery(con, paste0("SELECT SAMPLE_NUMBER, TOP_DEPTH, BOT_DEPTH, CORE_DIA, ",
+                                "TYPE, USC_CODE, COMMENTS ",
+                                "FROM PERMAFROST.PF_SAMPLE ",
                                 "WHERE SITE_ID = '", site_id, "' ",
                                 "ORDER BY TOP_DEPTH"))
   names(tab) <- c("Sample number", "Top depth (m)", "Bottom depth (m)", "Core diameter",
-                  "Type", "USC code", "Material type", "Comments")
+                  "Type", "USC code", "Comments")
   tab <- tab[,colSums(is.na(tab))<nrow(tab)]
   return(tab)
 }
@@ -170,6 +167,8 @@ library(leafpop)
 library(raster)
 library(rgdal)
 library(shinycssloaders)
+library(shinyBS)
+library(shinyjs)
 
 # Get locations
 locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
@@ -219,15 +218,35 @@ ui <- function(request){fluidPage(
                       tabsetPanel(id="tabs", type = 'tabs',
                                   
                                   tabPanel("Soil description",
+                                           useShinyjs(),
+                                           br(),
+                                           actionButton("USC_lookup", "Show USC code descriptions"),
+                                           bsModal("USCcodes", trigger = "USC_lookup",
+                                                   tableOutput("USCcodestable")),
+                                           br(),
+                                           br(),
                                            uiOutput("soil") %>% 
                                              withSpinner(color="#0097A9")),
+                                           
                                   tabPanel("Permafrost description",
+                                           br(),
+                                           actionButton("lookup", "Show Ice code descriptions"),
+                                           bsModal("icecodes", trigger = "lookup",
+                                                  tableOutput("icecodestable")),
+                                           br(),
+                                           br(),
                                            uiOutput("permafrost")),
-                                           #DT::dataTableOutput("permafrost")),
                                   tabPanel("Samples",
+                                            bsModal("USCcodes_sample", trigger = "USC_lookup_sample",
+                                                      tableOutput("USCcodestable_sample")),
+                                           br(),
                                            fluidPage(
-                                             fluidRow(column(12, textOutput("samplestxt"))
-                                             ),
+                                             fluidRow(column(12, uiOutput("samplestxt"))
+                                                      ), 
+                                             br(),
+                                             fluidRow(column(12, actionButton("USC_lookup_sample", 
+                                                                              "Show USC code descriptions"))
+                                                      ),
                                              fluidRow(column(12, tableOutput("sample"))
                                              ),
                                              fluidRow(column(12, tableOutput("permafrost_testing"))
@@ -238,7 +257,8 @@ ui <- function(request){fluidPage(
                                            )
                                            ),
                                   tabPanel("Metadata",
-                                           fluidPage(uiOutput("meta")))
+                                           br(),
+                                           uiOutput("meta"))
                                            #,
                                   # tabPanel("Install",
                                   #          fluidRow(
@@ -320,16 +340,33 @@ server <- function(input, output, session) {
     setView(pft.map(cloc), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
   })
   
+  
   ## Soil description
+  observe({
+    if (("USC code" %in% colnames(soil_input()))==TRUE) {
+      shinyjs::show("USC_lookup")
+    } else {hide("USC_lookup")}
+      })
+  
+  output$USCcodestable <- renderTable(
+    {tab <- dbGetQuery(con, paste0("SELECT CODE, MATERIAL_TYPE ",
+                                   "FROM PERMAFROST.PF_USC ",
+                                   "ORDER BY CODE"))
+    names(tab) <- c("USC code", "Material type")
+    return(tab)
+    })
+  
   output$soil <- renderUI({
     if(nrow(soil_input())==0)
-      return("No data available")
+      return(HTML(paste(em("No data available"))))
     tableOutput("soil_desc")
   })
   output$soil_desc <- renderTable({
     soil_input()
   })
   
+  
+  ## Permafrost description
   # Reactive expression to hide tab
   tab_pf <- reactive({
     if (nrow(permafrost_input())==0){
@@ -344,55 +381,67 @@ server <- function(input, output, session) {
     }
   }) 
   
-  # Permafrost description
+  output$icecodestable <- renderTable(
+    {tab <- dbGetQuery(con, paste0("SELECT CODE, DESCRIPTION ",
+                                  "FROM PERMAFROST.PF_GR_ICE_DESC "))
+    names(tab) <- c("Ice code", "Description")
+    return(tab)
+    })
+  
   output$permafrost <- renderUI({
     tableOutput("permafrost_desc")
-    #DT::dataTableOutput("permafrost_desc")
   })
+
   output$permafrost_desc <- renderTable({
     permafrost_input()
   })
-  # output$permafrost_desc <- renderDataTable({
-  #   datatable(permafrost_input(), selection = list(target = 'column'))
-  # })
-  observeEvent(input$permafrost_desc_columns_selected,
-               {
-                 showModal(modalDialog(
-                   title = "Ground ice descriptions",
-                   paste0("test")
-                 ))
-               })
   
   ## Surface description
   output$surface <- renderUI({
     if(nrow(surface_input())==0)
-      return("No data available")
+      return(HTML(paste(em("No data available"))))
     tableOutput("surface_desc")
   })
   output$surface_desc <- renderTable({
     surface_input()
   })
   
+  
   ## Metadata
   output$meta <- renderUI({
-    if(length(meta_input())==0)
-      return("No data available")
+    if(nrow(meta_input())==0)
+      return(HTML(paste(em("No data available"))))
     tableOutput("metadata")
   })
   output$metadata <- renderTable({
     meta_input()
   })
   
+  
   ## Samples
-  output$samplestxt <- renderText({
+  observe({
+    if (("USC code" %in% colnames(sample_input()))==TRUE) {
+      shinyjs::show("USC_lookup_sample")
+    } else {hide("USC_lookup_sample")}
+  })
+  
+  output$USCcodestable_sample <- renderTable(
+    {tab <- dbGetQuery(con, paste0("SELECT CODE, MATERIAL_TYPE ",
+                                   "FROM PERMAFROST.PF_USC ",
+                                   "ORDER BY CODE"))
+    names(tab) <- c("USC code", "Material type")
+    return(tab)
+    })
+  
+  output$samplestxt <- renderUI({
     l <- length(which(
       c(nrow(sample_input()), nrow(permafrosttesting_input()), 
                         nrow(geotechtesting_input()), nrow(envirotesting_input())
         ) ==0))
     if (l==4)
-      return("No data available")
+      return(HTML(paste(em("No data available"))))
     if(l<=2)
-      return("Scroll down for additional tables")
+      return(HTML(paste(em("Scroll down for additional tables"))))
     if(l==3)
       return("")
   })
