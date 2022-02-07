@@ -20,8 +20,8 @@ pft.map <- function(loc) {
     }
     locsl <- cbind(locs, links)
     # to make method and who faster
-      # # remove who_id and method_id
-      # locsl <- locsl[,!(names(locsl) %in% c("who_id","method_id"))]
+    # # remove who_id and method_id
+    # locsl <- locsl[,!(names(locsl) %in% c("who_id","method_id"))]
     # Change field names
     colnames(locsl) <- c("Name", "Start year", "End year", "Min depth", "Max depth",
                          "Latitude", "Longitude", "Permafrost", "Link")
@@ -53,6 +53,7 @@ pft.query <- function(con, location) {
                                 #"WHO_ID ",# METHOD_ID ",
                                 "FROM PERMAFROST.PFT_SUMMARY2 ",
                                 "WHERE NAME = '", location, "' ",
+                                "AND DEPTH <= 0 ",
                                 "AND PUBLIC_FLAG = 'Y'",
                                 "ORDER BY TEMPDATE, DEPTH DESC" ))
   obs$TEMPDATE <- as.Date(obs$TEMPDATE)
@@ -70,6 +71,7 @@ pft.subset <- function(obs, aggr, depth_min, depth_max, date_s, date_e) {
     obs <- dbGetQuery(con, paste0("SELECT TEMPTIME, DEPTH, ROUND(TEMP, 2) AS TEMP ",
                                   "FROM PERMAFROST.PFT_SUMMARY ",
                                   "WHERE NAME = '", location, "' ",
+                                  "AND DEPTH <= 0 ",
                                   "AND PUBLIC_FLAG = 'Y'",
                                   "ORDER BY TEMPTIME, DEPTH DESC"))
     obs$TEMPTIME <- as.POSIXct(obs$TEMPTIME, tz = "", format = "%Y-%m-%d %H:%M")
@@ -139,7 +141,7 @@ pft.plot <- function(obs) {
   for (seriesNum in 1:snamesLen)
   {
     graph <- graph %>% dySeries(paste0("V",seriesNum) 
-                               ,label = snames[seriesNum])
+                                ,label = snames[seriesNum])
   }
   
   # Create plot
@@ -147,7 +149,7 @@ pft.plot <- function(obs) {
     dyLegend(width = 100, labelsSeparateLines = TRUE, labelsDiv = 'legend') %>%
     dyOptions(labelsUTC = TRUE, gridLineWidth = 0.1, 
               colors = colorRampPalette(c("#DC4405", "#F2A900", "#7A9A01", "#0097A9"))(snamesLen)
-              ) %>%
+    ) %>%
     dyHighlight(highlightSeriesOpts = list(strokeWidth = 2)) %>%
     dyLimit(limit = 0, strokePattern = "solid")
   
@@ -220,7 +222,7 @@ pft.plot_groundtempenv <- function(obs, date_s, date_e) {
     labs(x="depth (m)", y="temperature (\u00B0C)") +
     geom_hline(yintercept = 0, linetype="dashed", color="grey") +    # vertical line at 0
     geom_vline(xintercept = 0, color="grey") +    # Horizontal line at 0
-   
+    
     geom_line(aes(x=depth, y=max), color="#DC4405", size=0.75) +     # Maximum line
     geom_point(aes(x=depth, y=max), color="#DC4405", size=2) + # firebrick2
     
@@ -246,9 +248,9 @@ pft.plot_groundtempenv <- function(obs, date_s, date_e) {
 
 ## Filters the locs table to the names with string
 filter.locs <- function(s){
-    flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
-    # to make method and who faster
-      # flocs <- flocs[,!(names(flocs) %in% c("who_id", "method_id"))]
+  flocs <- locs[grep(s, locs$name, ignore.case=TRUE),]
+  # to make method and who faster
+  # flocs <- flocs[,!(names(flocs) %in% c("who_id", "method_id"))]
   return(flocs)
 }
 
@@ -258,7 +260,7 @@ filter.locs <- function(s){
 current.loc <- function(n){
   cloc <- locs[locs$name==n,]
   # to make method and who faster
-    # cloc <- cloc[,!(names(cloc) %in% c("who_id", "method_id"))]
+  # cloc <- cloc[,!(names(cloc) %in% c("who_id", "method_id"))]
   return(cloc)
 }
 
@@ -300,7 +302,7 @@ who.met <- function(who) {
 
 # Method
 method.met <- function(method) {
-
+  
   tab <- dbGetQuery(con, paste0("SELECT PERMAFROST.METHOD_LOOKUP.METHOD, PERMAFROST.PFT_METHOD.PRECISION, ",
                                 "PERMAFROST.PFT_METHOD.ACCURACY, PERMAFROST.PFT_METHOD.SENSOR_MANUFACTURER, ",
                                 "PERMAFROST.PFT_METHOD.SENSOR_MANUFACTURER_MODEL, PERMAFROST.PFT_METHOD.LOGGER_MANUFACTURER, ",
@@ -310,21 +312,20 @@ method.met <- function(method) {
                                 "INNER JOIN PERMAFROST.METHOD_LOOKUP ",
                                 "ON PERMAFROST.PFT_METHOD.METHOD_ID=PERMAFROST.METHOD_LOOKUP.METHOD_ID ",
                                 "WHERE PERMAFROST.PFT_METHOD.ID IN ",
-                                "('", method, "')"))
+                                "(", toString(method[,1]), ")"))
+  
+  # Set column names
+  colnames(tab) <- c("Method", "Precision", "Accuracy", "Sensor manufacturer",
+                     "Sensor manufacturer model", "Logger manufacturer",
+                     "Logger manufacturer model", "Radiation shield",
+                     "Units")
+   if (nrow(method) >= 2) {
+     Years <- paste0(method[,2], " - ", method[,3])
+     tab <- cbind(Years, tab)
+   }
+  # Transpose dataframe
+  tab <- t(tab)
 
-  tab <- reshape(tab, times=c("Method", "Precision", "Accuracy", "Sensor manufacturer",
-                              "Sensor manufacturer model", "Logger manufacturer",
-                              "Logger manufacturer model", "Radiation shield",
-                              "units"),
-                 ids=NULL,
-                 varying = c("METHOD", "PRECISION", "ACCURACY", "SENSOR_MANUFACTURER",
-                             "SENSOR_MANUFACTURER_MODEL", "LOGGER_MANUFACTURER",
-                             "LOGGER_MANUFACTURER_MODEL", "RADIATION_SHIELD",
-                             "UNITS"),
-
-  v.names= "value",
-  direction="long", sep="")
-  tab <- tab[!is.na(tab$value), ]
   return(tab)
 }
 
@@ -366,9 +367,9 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
 names(locs) <- c("name", "start_year", "end_year", "min_depth", "max_depth",
                  "lat", "long", "Permafrost")#, "who_id", "method_id")
 # to make method and who faster
-  # locs <- locs[,!(names(locs) %in% c("who_id", "method_id"))]
-  # locs <- unique(locs)
-  # locs2 <- locs
+# locs <- locs[,!(names(locs) %in% c("who_id", "method_id"))]
+# locs <- unique(locs)
+# locs2 <- locs
 
 #-------------------------------------------------------------------------------------
 #################### UI ###############################################################
@@ -392,8 +393,8 @@ ui <- function(request){fluidPage(
              
              tabPanel("Map", 
                       textInput("string", "Location filter/search:", 
-                                 placeholder = "Search any string to filter locations",
-                                 value = ""),
+                                placeholder = "Search any string to filter locations",
+                                value = ""),
                       leafletOutput("mymap") %>% withSpinner(color="#0097A9"),
                       br(),
                       downloadButton("downloadLoc.csv", "Download locations CSV"),
@@ -404,11 +405,11 @@ ui <- function(request){fluidPage(
                       # Locations and years panels
                       fluidRow(
                         column(4, 
-                          selectInput("loc", label = "Location:",
-                                      choices=locs$name,
-                                      selected="")
+                               selectInput("loc", label = "Location:",
+                                           choices=locs$name,
+                                           selected="")
                         ),
-                               
+                        
                         column(2,
                                selectInput("aggr", "Aggregation:",
                                            choices=c("none", "day", "month", "year"),
@@ -428,7 +429,7 @@ ui <- function(request){fluidPage(
                                            br(),
                                            fluidRow(
                                              column(10, dygraphOutput("dygraph", width = "95%") %>% 
-                                             withSpinner(color="#0097A9")),
+                                                      withSpinner(color="#0097A9")),
                                              column(2, textOutput("legend"))),
                                            br(),
                                            textOutput("dygraph_txt"),
@@ -458,10 +459,10 @@ ui <- function(request){fluidPage(
                                              withSpinner(color="#0097A9")),
                                   tabPanel("Metadata", 
                                            fluidRow(
-                                             column(6, tableOutput("location_met")),
-                                             column(6, tableOutput("who_met") %>% 
-                                                      withSpinner(color="#0097A9"))#,
-                                             #column(4, tableOutput("method_met"))
+                                             column(4, tableOutput("location_met")),
+                                             column(4, tableOutput("who_met") %>% 
+                                                      withSpinner(color="#0097A9")),
+                                             column(4, tableOutput("method_met"))
                                            )
                                   )
                       )
@@ -650,7 +651,7 @@ server <- shinyServer(function(input, output, session) {
   #   },
   #   contentType = 'image/png'
   # )
-
+  
   # Time series description
   output$dygraph_txt <- renderText({
     paste0("This graph shows temperature evolution (y-axis) over time (x-axis), ",
@@ -673,7 +674,7 @@ server <- shinyServer(function(input, output, session) {
   ### Ground temperature envelopes
   output$GroundTempEnvs <- renderPlot({
     pft.plot_groundtempenv(mainObs(), paste0(input$years[1], "-01-01"),
-                          paste0(input$years[2], "-12-31"))
+                           paste0(input$years[2], "-12-31"))
   })
   # Ground temperature envelopes description
   output$groundTempEnvs_txt <- renderText({
@@ -686,7 +687,7 @@ server <- shinyServer(function(input, output, session) {
     filename = function() {paste0("GroundTempEnvelope_", currentLoc()$name, ".png")},
     content = function(file) {
       ggsave(file, plot = pft.plot_groundtempenv(mainObs(), paste0(input$years[1], "-01-01"),
-                                                paste0(input$years[2], "-12-31")),
+                                                 paste0(input$years[2], "-12-31")),
              device = "png")
     }
   )
@@ -704,8 +705,8 @@ server <- shinyServer(function(input, output, session) {
   # Who metadata
   output$who_met <- renderTable({
     who_id <- dbGetQuery(con, paste0("SELECT DISTINCT WHO_ID ",
-                                        "FROM PERMAFROST.PFT_SUMMARY ",
-                                        "WHERE NAME = '", input$loc, "'"))
+                                     "FROM PERMAFROST.PFT_SUMMARY ",
+                                     "WHERE NAME = '", input$loc, "'"))
     who_id <- who_id[[1]]
     #who_id <- unique(mainObs()$who_id)
     who.met(who_id)
@@ -716,14 +717,16 @@ server <- shinyServer(function(input, output, session) {
   
   # Method metadata
   output$method_met <- renderTable({
-    method_id <- dbGetQuery(con, paste0("SELECT DISTINCT METHOD_ID ",
-                           "FROM PERMAFROST.PFT_SUMMARY ",
-                           "WHERE NAME = '", input$loc, "'")) 
-    method_id <- method_id[[1]]
-    #method_id <- unique(mainObs()$method_id)
+    method_id <- dbGetQuery(con, paste0("SELECT DISTINCT(METHOD_ID), MIN(YEAR) AS START_YEAR, MAX(YEAR) AS END_YEAR ",
+                                        "FROM PERMAFROST.PFT_SUMMARY ",
+                                        "WHERE NAME = '", input$loc, "'",
+                                        "AND DEPTH <= 0 ",
+                                        "GROUP BY METHOD_ID ",
+                                        "ORDER BY START_YEAR"))
+
     method.met(method_id)
   },
-  colnames = FALSE, caption = "Method", 
+  colnames = FALSE, rownames = TRUE, caption = "Method", 
   caption.placement = getOption("xtable.caption.placement", "top"),
   )
 })
