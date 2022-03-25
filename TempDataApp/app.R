@@ -373,7 +373,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " LATITUDE, LONGITUDE, PERMAFROST",#,
                                #" WHO_ID, METHOD_ID", #only exists in dev view, added to try and make method and who faster
                                " FROM PERMAFROST.PFT_SUMMARY_LOC",
-                               #" WHERE PUBLIC_FLAG = 'Y'",
+                               " WHERE PUBLIC_FLAG = 'Y'",
                                " ORDER BY NAME ASC"
 ))
 
