@@ -32,7 +32,7 @@ pft.map <- function(loc) {
   pal <- colorFactor(c("#DC4405", "grey40", "#512A44", "#0097A9"), domain = c("No", "Undetermined", "Yes", "Weather station"))
   # Create map
   leaflet(loc) %>%
-    addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addProviderTiles('Esri.WorldTopoMap') %>% # 'Esri.WorldTopoMap''Esri.WorldImagery' More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
     addCircleMarkers(lng = loc$long, lat = loc$lat,
                      popup = leafpop::popupTable(f.link(loc), row.numbers = FALSE, feature.id = FALSE),
                      label = loc$name,
@@ -329,6 +329,19 @@ method.met <- function(method) {
   return(tab)
 }
 
+# Disturbance
+disturbance.met <- function(loc) {
+  tab <- dbGetQuery(con, paste0("SELECT TYPE, PROXIMITY, ESTIMATED_DATE, PERMAFROST.PFT_DISTURBANCE.COMMENTS ",
+                       "FROM PERMAFROST.PFT_DISTURBANCE ",
+                       "INNER JOIN PERMAFROST.PFT_LOCATIONS ",
+                       "ON PERMAFROST.PFT_DISTURBANCE.LOCATION_ID = PERMAFROST.PFT_LOCATIONS.ID ",
+                       "INNER JOIN PERMAFROST.TYPE_LOOKUP ",
+                       "ON PERMAFROST.PFT_DISTURBANCE.TYPE_ID = PERMAFROST.TYPE_LOOKUP.TYPE_ID ",
+                       "WHERE NAME = '", loc, "'"))
+  colnames(tab) <- c("Type", "Proximity (m)", "Estimated date", "Comments")
+  tab <- t(tab)
+  return(tab)
+}
 
 #-------------------------------------------------------------------------------------
 #################### START UP #######################################################
@@ -360,7 +373,7 @@ locs <- dbGetQuery(con, paste0("SELECT NAME,",
                                " LATITUDE, LONGITUDE, PERMAFROST",#,
                                #" WHO_ID, METHOD_ID", #only exists in dev view, added to try and make method and who faster
                                " FROM PERMAFROST.PFT_SUMMARY_LOC",
-                               " WHERE PUBLIC_FLAG = 'Y'",
+                               #" WHERE PUBLIC_FLAG = 'Y'",
                                " ORDER BY NAME ASC"
 ))
 
@@ -459,10 +472,11 @@ ui <- function(request){fluidPage(
                                              withSpinner(color="#0097A9")),
                                   tabPanel("Metadata", 
                                            fluidRow(
-                                             column(4, tableOutput("location_met")),
-                                             column(4, tableOutput("who_met") %>% 
+                                             column(3, tableOutput("location_met")),
+                                             column(3, tableOutput("who_met") %>% 
                                                       withSpinner(color="#0097A9")),
-                                             column(4, tableOutput("method_met"))
+                                             column(3, tableOutput("method_met")),
+                                             column(3, tableOutput("disturbance_met"))
                                            )
                                   )
                       )
@@ -729,7 +743,17 @@ server <- shinyServer(function(input, output, session) {
   colnames = FALSE, rownames = TRUE, caption = "Method", 
   caption.placement = getOption("xtable.caption.placement", "top"),
   )
-})
+  
+  # Disturbance metadata
+  output$disturbance_met <- renderTable({
+    
+    disturbance.met(input$loc)
+  },
+  colnames = TRUE, rownames = TRUE, caption = "Disrturbance",
+  caption.placement = getOption("xtable.caption.placement", "top"),
+  )
+  
+  })
 
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking = "url")
