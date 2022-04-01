@@ -32,14 +32,18 @@ pft.map <- function(loc) {
   pal <- colorFactor(c("#DC4405", "grey40", "#512A44", "#0097A9"), domain = c("No", "Undetermined", "Yes", "Weather station"))
   # Create map
   leaflet(loc) %>%
-    addProviderTiles('Esri.WorldTopoMap') %>% # 'Esri.WorldTopoMap''Esri.WorldImagery' More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addProviderTiles('Esri.WorldTopoMap', group = "Topo map") %>% # 'Esri.WorldTopoMap''Esri.WorldImagery' More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addProviderTiles('Esri.WorldImagery', group = "Satellite imagery") %>%
     addCircleMarkers(lng = loc$long, lat = loc$lat,
                      popup = leafpop::popupTable(f.link(loc), row.numbers = FALSE, feature.id = FALSE),
                      label = loc$name,
                      color = ~pal(Permafrost), 
                      opacity = 1, 
                      fillOpacity = 0.8) %>%
-    leaflet::addLegend("topright", pal = pal, values = ~Permafrost)
+    leaflet::addLegend("topright", pal = pal, values = ~Permafrost) %>%
+    addLayersControl(
+    baseGroups = c("Topo map", "Satellite imagery")
+    ) 
   
 }
 
@@ -339,7 +343,13 @@ disturbance.met <- function(loc) {
                        "ON PERMAFROST.PFT_DISTURBANCE.TYPE_ID = PERMAFROST.TYPE_LOOKUP.TYPE_ID ",
                        "WHERE NAME = '", loc, "'"))
   colnames(tab) <- c("Type", "Proximity (m)", "Estimated date", "Comments")
+  
+    if (length(tab[,1])==0) {
+      tab[1,] <- c(NA, NA, NA, NA) #c("none", "none", "none", "none")
+    }
+  
   tab <- t(tab)
+  
   return(tab)
 }
 
@@ -749,7 +759,7 @@ server <- shinyServer(function(input, output, session) {
     
     disturbance.met(input$loc)
   },
-  colnames = TRUE, rownames = TRUE, caption = "Disrturbance",
+  colnames = FALSE, rownames = TRUE, caption = "Disturbance",
   caption.placement = getOption("xtable.caption.placement", "top"),
   )
   
