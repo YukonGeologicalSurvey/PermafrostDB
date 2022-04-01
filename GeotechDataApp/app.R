@@ -12,11 +12,15 @@ enableBookmarking("url")
 pft.map <- function(loc) {
   # Create map
   leaflet(loc) %>%
-    addProviderTiles('Esri.WorldTopoMap') %>% # More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addProviderTiles('Esri.WorldTopoMap', group = "Topo map") %>% # 'Esri.WorldTopoMap''Esri.WorldImagery' More here: http://leaflet-extras.github.io/leaflet-providers/preview/index.html
+    addProviderTiles('Esri.WorldImagery', group = "Satellite imagery") %>%
     addCircleMarkers(lng=loc$Longitude, lat=loc$Latitude, 
                      popup=popupTable(loc, row.numbers=FALSE, feature.id=FALSE),
                      label = loc$Name,
-                     color = "#800403", opacity=1)
+                     color = "#800403", opacity=1) %>%
+  addLayersControl(
+    baseGroups = c("Topo map", "Satellite imagery")
+  )
 }
 
 ########## f.soil ##############################################
