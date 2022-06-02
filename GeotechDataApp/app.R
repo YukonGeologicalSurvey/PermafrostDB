@@ -180,6 +180,8 @@ locs <- dbGetQuery(con, "SELECT SITE_ID, ELEVATION, HOLE_DEPTH, START_DATE,
                    FROM PERMAFROST.V_PF_LOCATIONS_MAP ORDER BY SITE_ID")
 names(locs) <- c("Name", "Elevation", "Hole depth (m)", "Start date", "End date",
                  "Latitude", "Longitude", "Project number", "Link") 
+locs$Latitude <- as.numeric(locs$Latitude)
+locs$Longitude <- as.numeric(locs$Longitude)
 
 # Create all locations map
 #map <- pft.map(locs)
@@ -307,7 +309,13 @@ server <- function(input, output, session) {
   
   ### Reactive output functions
   # Create locations table reactive to string input
-  filteredLoc <- reactive({filter.locs(input$string)})
+  filteredLoc <- reactive({
+    validate(
+      need(dim(locs[grep(input$string, locs$Name, ignore.case=TRUE),])[1] !=0,
+           "Search does not match any records")
+    )
+    filter.locs(input$string)
+    })
   # Create soil description table
   soil_input <- reactive(f.soil(input$loc))
   # Create permafrost description table
