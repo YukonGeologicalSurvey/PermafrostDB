@@ -558,7 +558,13 @@ server <- shinyServer(function(input, output, session) {
   
   ### REACTIVE OUTPUT FUNCTIONS
   # Create locations table reactive to string input
-  filteredLoc <- reactive({filter.locs(input$string)})
+  filteredLoc <- reactive({
+    validate(
+      need(dim(locs[grep(input$string, locs$name, ignore.case=TRUE),])[1] !=0,
+           "Search does not match any records")
+    )
+    filter.locs(input$string)
+    })
   
   # Create current location table reactive to loc input
   currentLoc <- reactive({current.loc(input$loc)})
