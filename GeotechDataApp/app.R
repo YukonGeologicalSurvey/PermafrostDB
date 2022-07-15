@@ -20,7 +20,11 @@ pft.map <- function(loc) {
                      color = "#800403", opacity=1) %>%
   addLayersControl(
     baseGroups = c("Topo map", "Satellite imagery")
-  )
+  ) %>%
+    addScaleBar(
+      position = "bottomright",
+      options = scaleBarOptions(imperial=FALSE)
+    )
 }
 
 ########## f.soil ##############################################
@@ -183,9 +187,6 @@ names(locs) <- c("Name", "Elevation", "Hole depth (m)", "Start date", "End date"
 locs$Latitude <- as.numeric(locs$Latitude)
 locs$Longitude <- as.numeric(locs$Longitude)
 
-# Create all locations map
-#map <- pft.map(locs)
-
 #-------------------------------------------------------------------------------------
 ###################### UI ##################################
 
@@ -215,8 +216,10 @@ ui <- function(request){fluidPage(
                       fluidRow(
                         column(4, selectizeInput("loc", "Site:",
                                                  choices=locs$Name,
-                                                 selected="", 
-                                                 options = list(maxOptions=15000))),
+                                                 #choices=NULL#,
+                                                  selected="", 
+                                                  options = list(maxOptions=15000)
+                               )),
                         column(8, leafletOutput("locmap", height='300') %>% 
                                  withSpinner(color="#0097A9"))
                       ),
@@ -231,7 +234,7 @@ ui <- function(request){fluidPage(
                                                    tableOutput("USCcodestable")),
                                            br(),
                                            br(),
-                                           uiOutput("soil") %>% 
+                                           tableOutput("soil") %>% 
                                              withSpinner(color="#0097A9")),
                                            
                                   tabPanel("Permafrost description",
@@ -294,14 +297,8 @@ server <- function(input, output, session) {
   ###=============================================================================
   ### Selection
   ###=============================================================================
-  # Locations selection
-  output$firstSelection <- renderUI({
-    # Set select input
-    selectInput("loc",
-                label = NULL,
-                choices=  locs$Name,  #"YGS_TakhiniValley",
-                selected=NULL)
-  })
+  # Server-side selectize
+  #updateSelectizeInput(session, 'loc', choices = locs$Name, server = TRUE) 
   
   ###=============================================================================
   ### Output
@@ -311,13 +308,21 @@ server <- function(input, output, session) {
   # Create locations table reactive to string input
   filteredLoc <- reactive({
     validate(
-      need(dim(locs[grep(input$string, locs$Name, ignore.case=TRUE),])[1] !=0,
+      need(dim(locs[grep(input$string, locs$Name, 
+                         ignore.case=TRUE),])[1] !=0,
            "Search does not match any records")
     )
     filter.locs(input$string)
     })
   # Create soil description table
-  soil_input <- reactive(f.soil(input$loc))
+  soil_input <- reactive({
+    soil <- f.soil(input$loc)
+    # validate(
+    #   need(nrow(soil)!=0,
+    #        "No data available")
+    # )
+    soil
+    })
   # Create permafrost description table
   permafrost_input <- reactive(f.permafrost(input$loc))
   # Create surface description table
@@ -352,12 +357,12 @@ server <- function(input, output, session) {
     setView(pft.map(cloc), lng=cloc$Longitude, lat=cloc$Latitude, zoom=15)
   })
   
-  
-  ## Soil description
+  # Soil description
   observe({
-    if (("USC code" %in% colnames(soil_input()))==TRUE) {
+    if (("USC code" %in% colnames(soil_input()))==TRUE){
       shinyjs::show("USC_lookup")
-    } else {hide("USC_lookup")}
+    }
+    else {hide("USC_lookup")}
       })
   
   output$USCcodestable <- renderTable(
@@ -368,6 +373,11 @@ server <- function(input, output, session) {
     return(tab)
     })
   
+  
+  # output$soil <- renderTable({
+  #   soil_input()
+  # })
+  
   output$soil <- renderUI({
     if(nrow(soil_input())==0)
       return(HTML(paste(em("No data available"))))
@@ -376,7 +386,7 @@ server <- function(input, output, session) {
   output$soil_desc <- renderTable({
     soil_input()
   })
-  
+
   
   ## Permafrost description
   # Reactive expression to hide tab
