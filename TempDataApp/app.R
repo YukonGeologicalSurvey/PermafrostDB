@@ -43,7 +43,11 @@ pft.map <- function(loc) {
     leaflet::addLegend("topright", pal = pal, values = ~Permafrost) %>%
     addLayersControl(
     baseGroups = c("Topo map", "Satellite imagery")
-    ) 
+    ) %>%
+    addScaleBar(
+      position = "bottomright",
+      options = scaleBarOptions(imperial=FALSE)
+    )
   
 }
 
@@ -275,8 +279,9 @@ location.met <- function(loc) {
   tab <- dbGetQuery(con, paste0("SELECT ID, NAME, LATITUDE, LONGITUDE, ELEVATION, LOCATION_ACCURACY, ",
                                 "ELEVATION_ACCURACY, LOCAL_RELIEF, COMMENTS, PERMAFROST ",
                                 "FROM PERMAFROST.PFT_LOCATIONS ",
-                                "WHERE NAME = '", loc, "' ",
-                                "AND PUBLIC_FLAG = 'Y'"))
+                                "WHERE NAME = '", loc, "' "
+                                ,"AND PUBLIC_FLAG = 'Y'"
+                                ))
   
   tab <- reshape(tab, times=c("ID", "Name", "Latitude", "Longitude", "Elevation (m)", "Location accuracy (m)",
                               "Elevation accuracy (m)", "Local relief (m)", "Comments", "Permafrost"),
